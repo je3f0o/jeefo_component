@@ -1,0 +1,40 @@
+{
+  "name": "jeefo_component",
+  "version": "0.0.1",
+  "description": "Part of jeefo framework",
+  "author": {
+    "name": "je3f0o",
+    "email": "je3f0o@gmail.com"
+  },
+  "homepage": "https://github.com/je3f0o/jeefo_component",
+  "license": "MIT",
+  "copyright": "2017",
+  "main": "index.js",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/je3f0o/jeefo_component.git"
+  },
+  "keywords": [
+    "q",
+    "http",
+    "utils",
+    "jeefo",
+    "jqlite",
+    "promise",
+    "animate",
+    "template",
+    "tokenizer",
+    "directive",
+    "component",
+    "framework",
+    "resource",
+    "XMLHttpRequest"
+  ],
+  "devDependencies": {},
+  "dependencies": {
+    "jeefo_animate": "^0.0.1",
+    "jeefo_jqlite": "^0.0.1",
+    "jeefo_resource": "^0.0.1"
+  }
+}
