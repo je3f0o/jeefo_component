@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : component.js
 * Created at  : 2017-07-24
-* Updated at  : 2017-08-24
+* Updated at  : 2017-08-26
 * Author      : jeefo
 * Purpose     : Make possible to create a self contained web component.
 * Description : Internal class of Jeefo-Framework's jeefo.directive module.
@@ -53,9 +53,9 @@ _._._._._._._._._._._._._._._._._._._._._.*/
 // Variables {{{1
 var assign       = require("jeefo_utils/object/assign"),
 	$q           = assign({}, require("jeefo_q")),
+	Events       = require("jeefo_template/events"),
 	jqlite       = require("jeefo_jqlite"),
 	parser       = require("./parser"),
-	compiler     = require("./compiler"),
 	$resource    = require("jeefo_resource"),
 	$animator    = require("jeefo_animate"),
 	constructor  = require("./constructor"),
@@ -124,10 +124,11 @@ compile_post = function (component) {
 // Listen events {{{1
 listen_events = function (component) {
 	var events   = component.events,
-		$element = component.$element, i = events.length;
+		$element = component.$element,
+		names = events.keys, i = names.length;
 
 	while (i--) {
-		$element.on(events[i].name, parser(component, events[i].handler).getter());
+		$element.on(names[i], parser(component, events.values[names[i]]).getter());
 	}
 
 	return component;
@@ -207,7 +208,7 @@ link = function (component) {
  */
 var Component = function (parent) {
 	this.parent           = parent || null;
-	this.events           = [];
+	this.events           = new Events();
 	this.children         = [];
 	this.directives       = [];
 	this.change_detectors = [];

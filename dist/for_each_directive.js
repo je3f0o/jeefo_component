@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : for_each_directive.js
 * Created at  : 2017-07-25
-* Updated at  : 2017-08-24
+* Updated at  : 2017-08-28
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -9,26 +9,47 @@ _._._._._._._._._._._._._._._._._._._._._.*/
 
 var jqlite        = require("jeefo_jqlite"),
 	$animator     = require("jeefo_animate"),
-	compile_nodes = require("./compiler").compile_nodes;
+	tokenizer     = require("jeefo_javascript_parser/src/es5/tokenizer"),
+	compile_nodes = require("./compiler/nodes"),
+
+parse_input = function (str) {
+	tokenizer.init(str);
+	var input = {}, token = tokenizer.next();
+
+	if (token.type === "Identifier") {
+		input.variable = token.name;
+	}
+
+	token = tokenizer.next();
+	if (token.name === "in") {
+		token = tokenizer.next();
+	}
+
+	if (token.type === "Identifier") {
+		input.input = token.name;
+	}
+
+	return input;
+};
 
 module.exports = {
 	priority   : 1000,
 	selector   : "for-each",
 	controller : {
 		on_init : function ($parser, $component) {
-			var $element = $component.$element;
+			var code     = $component.attrs.values["for-each"],
+				input    = parse_input(code),
+				$element = $component.$element;
 
-			this.$parser    = $parser("tabs"); // hard coded
+			this.name       = input.variable;
+			this.$parser    = $parser(input.input);
 			this.$component = $component;
-
-			this.name    = "tab"; // hard coded
-			this.code    = $element[0].getAttribute("for-each");
 			
 			// Clone dom tree
 			this.node = $component.node;
 
 			// Insert comment before remove $element
-			this.$comment = jqlite(document.createComment(" For each: " + this.code + ' '));
+			this.$comment = jqlite(document.createComment(" For each: " + code + ' '));
 			$element.before(this.$comment[0]);
 
 			// Remove element and reset component
@@ -83,6 +104,6 @@ module.exports = {
 			this.$last_element.after(component.$element[0]);
 
 			$animator.enter(component.$element, stagger_index);
-		},
+		}
 	}
 };

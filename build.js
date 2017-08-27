@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : build.js
 * Created at  : 2017-08-24
-* Updated at  : 2017-08-24
+* Updated at  : 2017-08-26
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -55,16 +55,21 @@ var parse = content => {
 var files = [
 	"index",
 	"cache",
+	"config",
 	"parser",
 	"counter",
-	"compiler",
 	"observer",
 	"component",
 	"directive",
 	"constructor",
+	"transcluder",
+	"compiler/nodes",
+	"compiler/element",
+	"compiler/template",
 	"jf_bind_directive",
 	"for_each_directive",
 	"collect_components",
+	"compiler/build_nodes",
 	"make_directive_controller",
 ];
 

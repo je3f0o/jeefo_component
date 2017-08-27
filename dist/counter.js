@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : counter.js
 * Created at  : 2017-08-12
-* Updated at  : 2017-08-12
+* Updated at  : 2017-08-26
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -15,4 +15,4 @@ Counter.prototype.increment = function () {
 	this.id += 1;
 };
 
-module.exports = Counter;
+module.exports = new Counter();

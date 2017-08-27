@@ -1,6 +1,6 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
-* File Name   : counter.js
-* Created at  : 2017-08-12
+* File Name   : config.js
+* Created at  : 2017-08-26
 * Updated at  : 2017-08-26
 * Author      : jeefo
 * Purpose     :
@@ -13,12 +13,6 @@ _._._._._._._._._._._._._._._._._._._._._.*/
 
 // ignore:end
 
-var Counter = function (id) {
-	this.id = id || 0;
+export default {
+	EVENT_REGEX : /^\(([^)]+)\)$/,
 };
-
-Counter.prototype.increment = function () {
-	this.id += 1;
-};
-
-export default new Counter();
