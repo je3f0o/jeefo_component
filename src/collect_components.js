@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : collect_components.js
 * Created at  : 2017-08-10
-* Updated at  : 2017-08-28
+* Updated at  : 2017-08-30
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -73,8 +73,10 @@ combine_template = function (template, node) {
 	node.events     = combine_pairs(other.events, node.events);
 	node.class_list = combine_classes(other.class_list, node.class_list.list);
 
-	transclude(other.children, node.children);
-	node.children = other.children;
+	if (other.children.length) {
+		transclude(other.children, node.children);
+		node.children = other.children;
+	}
 };
 
 collect_components = function (nodes, container, parent, counter) {
