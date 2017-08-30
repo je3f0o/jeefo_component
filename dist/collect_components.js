@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : collect_components.js
 * Created at  : 2017-08-10
-* Updated at  : 2017-08-30
+* Updated at  : 2017-08-31
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -16,26 +16,16 @@ var cache       = require("./cache"),
 	transcluder = require("./transcluder"),
 	combine_template, collect_components,
 
-sort_by_priority = function (a, b) {
-	return b.definition.priority - a.definition.priority;
-},
-
 combine_pairs = function (pairs, other) {
-	var keys = other.keys, i = keys.length;
-
-	while (i--) {
+	for (var i = 0, keys = other.keys; i < keys.length; ++i) {
 		pairs.set(keys[i], other.values[keys[i]]);
 	}
-
-	return pairs;
 },
 
 combine_classes = function (class_list, other_list) {
 	for (var i = 0; i < other_list.length; ++i) {
 		class_list.add(other_list[i]);
 	}
-
-	return class_list;
 },
 
 transclude = function (nodes, children) {
@@ -46,84 +36,110 @@ transclude = function (nodes, children) {
 	}
 
 	transcluder.transclude();
+},
+
+structural_directive = function (attrs) {
+	var keys = attrs.keys, i = keys.length, max_priority = 0,
+		definition, result;
+
+	while (i--) {
+		if (directives[keys[i]]) {
+			definition = cache.resolve_directive(keys[i]);
+			if (definition.priority > max_priority) {
+				result = { name : keys[i], definition : definition };
+			}
+		}
+	}
+
+	if (result) {
+		attrs.remove(result.name);
+	}
+
+	return result;
 };
 
 combine_template = function (template, node) {
 	if (typeof template === "function") {
 		template = template(node);
 		if (! template) {
-			return;
+			return node;
 		}
 	}
 
 	var nodes = parser(template), other = nodes[0];
 	
-	if (! node.id) {
-		node.id = other.id;
-	}
-
 	// Reason why other's property first is, we want keep other's order
-	node.attrs      = combine_pairs(other.attrs, node.attrs);
-	node.events     = combine_pairs(other.events, node.events);
-	node.class_list = combine_classes(other.class_list, node.class_list.list);
+	combine_pairs(other.attrs, node.attrs);
+	combine_pairs(other.events, node.events);
+	combine_classes(other.class_list, node.class_list.list);
 
-	if (other.children.length) {
-		transclude(other.children, node.children);
-		node.children = other.children;
-	}
+	return other;
 };
 
 collect_components = function (nodes, container, parent, counter) {
-	var i = 0, component = new Component(parent), j, keys, attrs, _parent, directive;
+	var i = 0, component = new Component(parent),
+		j, keys, name, attrs, other, _parent, directive;
 
 	for (; i < nodes.length; ++i) {
-		attrs   = nodes[i].attrs;
+		name    = nodes[i].name;
 		_parent = parent;
 
-		if (components[nodes[i].name]) {
-			component.name       = nodes[i].name;
-			component.definition = cache.resolve_component(component.name);
-			nodes[i].name        = "div";
+		// Structural directive
+		directive = structural_directive(nodes[i].attrs);
+		if (directive) {
+			counter.increment();
 
-			if (component.definition.template) {
-				combine_template(component.definition.template, nodes[i]);
-			}
+			component.id    = nodes[i].component_id = counter.id;
+			component.attrs = nodes[i].attrs;
+
+			component.node       = nodes[i].clone();
+			component.name       = directive.name;
+			component.definition = directive.definition;
+
+			nodes[i].clear();
+
+			container.push(component);
+			component = new Component(parent);
+
+			continue;
 		}
 
-		keys = attrs.keys;
-		j    = keys.length;
+		// Component
+		if (components[name]) {
+			component.name       = name;
+			component.definition = cache.resolve_component(name);
+
+			other = combine_template(component.definition.template || "div", nodes[i]);
+
+			if (other.children.length) {
+				transclude(other.children, nodes[i].children);
+			} else {
+				other.children = nodes[i].children;
+			}
+
+			nodes[i] = other;
+		}
+
+		// Normal directives
+		attrs = nodes[i].attrs;
+		keys  = attrs.keys;
+		j     = keys.length;
 		while (j--) {
 			if (directives[keys[j]]) {
 				component.directives.push(
 					new Directive(keys[j], cache.resolve_directive(keys[j]))
 				);
+
+				attrs.remove(keys[i]);
 			}
 		}
 
 		if (component.name || nodes[i].events.keys.length || component.directives.length) {
 			counter.increment();
 
-			component.id    = nodes[i].component_id = counter.id;
-			component.attrs = attrs;
-
-			component.directives.sort(sort_by_priority);
-			directive = component.directives[0];
-			if (directive && directive.definition.priority) {
-				attrs.remove(directive.name);
-
-				component.node       = nodes[i].clone();
-				component.name       = directive.name;
-				component.definition = directive.definition;
-				component.directives = [];
-
-				nodes[i].clear();
-			} else {
-				j = component.directives.length;
-				while (j--) {
-					attrs.remove(component.directives[j].name);
-				}
-				component.events = nodes[i].events;
-			}
+			component.id     = nodes[i].component_id = counter.id;
+			component.attrs  = attrs;
+			component.events = nodes[i].events;
 
 			_parent = component;
 			container.push(component);

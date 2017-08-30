@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : element.js
 * Created at  : 2017-08-26
-* Updated at  : 2017-08-26
+* Updated at  : 2017-08-31
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -62,11 +62,11 @@ collect_components_from_element = function (element, container, parent, counter)
 		if (components[name]) {
 			$old_element = jqlite(node);
 
-			node = new NodeElement({ name : name });
-			build_nodes(node, $old_element[0]);
+			node = [ new NodeElement({ name : name }) ];
+			build_nodes(node[0], $old_element[0]);
 
-			collect_components([node], container, parent, counter);
-			node = jqlite(node.compile('', ''))[0];
+			collect_components(node, container, parent, counter);
+			node = jqlite(node[0].compile('', ''))[0];
 
 			$old_element.replace_with(node);
 		} else {

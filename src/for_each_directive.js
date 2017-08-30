@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : for_each_directive.js
 * Created at  : 2017-07-25
-* Updated at  : 2017-08-28
+* Updated at  : 2017-08-31
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -87,7 +87,7 @@ export default {
 				removed_components = children.splice(i);
 				i = removed_components.length;
 				while (i--) {
-					removed_components[i].remove();
+					removed_components[i].children[0].remove();
 				}
 
 				if (children.length) {
@@ -103,8 +103,8 @@ export default {
 			component.controller_as = this.name;
 			component.controller[this.name] = value;
 			
-			var fragment = compile_nodes([node], component);
-			component.$element = jqlite(fragment.firstChild);
+			compile_nodes([node], component);
+			component.$element = component.children[0].$element;
 
 			this.$component.children[index] = component;
 			this.$last_element.after(component.$element[0]);

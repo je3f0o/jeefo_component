@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : component.js
 * Created at  : 2017-07-24
-* Updated at  : 2017-08-26
+* Updated at  : 2017-08-31
 * Author      : jeefo
 * Purpose     : Make possible to create a self contained web component.
 * Description : Internal class of Jeefo-Framework's jeefo.directive module.
@@ -71,36 +71,34 @@ find_controller = function (component, dependency) {
 },
 
 compile_self = function (component) {
-	if (! component.name) { return component; }
+	if (! component.name) {
+		return $q.when(component);
+	}
 
-	// jshint latedef : false
-	return $q.when(component).
-		then(function (component) {
-			/*
-			var $attrs   = new Attributes(component.element),
-				template = get_template(component.definition.template, component.element, $attrs);
+	/*
+	var $attrs   = new Attributes(component.element),
+		template = get_template(component.definition.template, component.element, $attrs);
 
-			if (template) {
-				return compile_template(component, template, $attrs);
-			}
+	if (template) {
+		return compile_template(component, template, $attrs);
+	}
 
-			var template_url = get_template(component.definition.template_url, component.element, $attrs);
-			if (template_url) {
-				return $resource.get_text(template_url).then(function (template) {
-					return compile_template(component, template, $attrs);
-				});
-			}
-
-			return compile_template(component, "<div></div>", $attrs);
-			*/
-			return component;
-		}).
-		then(function (component) {
-			component.$element = jqlite(component.element);
-			constructor(component, component);
-
-			return component;
+	var template_url = get_template(component.definition.template_url, component.element, $attrs);
+	if (template_url) {
+		return $resource.get_text(template_url).then(function (template) {
+			return compile_template(component, template, $attrs);
 		});
+	}
+
+	return compile_template(component, "<div></div>", $attrs);
+	*/
+
+	return $q.when(component).then(function (component) {
+		component.$element = jqlite(component.element);
+		constructor(component, component);
+
+		return component;
+	});
 },
 
 // Post directives {{{1
@@ -135,11 +133,8 @@ listen_events = function (component) {
 },
 
 // Link {{{1
-link = function (component) {
-	return;
-	if (self.is_terminated || ! self.definition) { return self; }
-
-	if (self.definition.link) {
+link = function (self) {
+	if (self.definition && self.definition.link) {
 		var args = [], dependencies = self.definition.link.dependencies, i = dependencies.length;
 
 		while (i--) {
@@ -224,8 +219,7 @@ Component.prototype = {
 	compile : function () {
 		this.parent.children.push(this);
 
-		return $q.when(this).
-			then(compile_self).
+		return compile_self(this).
 			then(compile_post).
 			then(listen_events).
 			then(link).
