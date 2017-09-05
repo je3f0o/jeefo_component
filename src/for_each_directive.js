@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : for_each_directive.js
 * Created at  : 2017-07-25
-* Updated at  : 2017-08-31
+* Updated at  : 2017-09-06
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -103,11 +103,11 @@ export default {
 			component.controller_as = this.name;
 			component.controller[this.name] = value;
 			
-			compile_nodes([node], component);
-			component.$element = component.children[0].$element;
+			var element = compile_nodes([node], component).firstChild;
+			component.$element = jqlite(element);
 
 			this.$component.children[index] = component;
-			this.$last_element.after(component.$element[0]);
+			this.$last_element.after(element);
 
 			$animator.enter(component.$element, stagger_index);
 		}
