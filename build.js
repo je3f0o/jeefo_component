@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : build.js
 * Created at  : 2017-08-24
-* Updated at  : 2017-08-26
+* Updated at  : 2017-09-06
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -57,6 +57,7 @@ var files = [
 	"cache",
 	"config",
 	"parser",
+	"binder",
 	"counter",
 	"observer",
 	"component",

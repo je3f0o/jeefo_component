@@ -60,7 +60,7 @@ module.exports = {
 		},
 		on_digest : function () {
 			var i             = 0,
-				values        = this.$parser.getter(),
+				values        = this.$parser.get(),
 				children      = this.$component.children,
 				stagger_index = 0,
 				removed_components;
