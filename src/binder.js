@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : binder.js
 * Created at  : 2017-09-06
-* Updated at  : 2017-09-06
+* Updated at  : 2017-09-09
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -16,6 +16,8 @@ _._._._._._._._._._._._._._._._._._._._._.*/
 var parser   = require("./parser"),
 	Observer = require("./observer"),
 	object_keys = Object.keys,
+
+PLACEHOLDER_REGEX = /{{\s*([^}]+)\s*}}/g,
 
 bind_one_way = function ($parser, controller, controller_property) {
 	return {
@@ -61,7 +63,11 @@ module.exports = function binder (component, controller, bindings) {
 		var value = attrs.get(key) || prop;
 
 		if (operator === '@') {
-			controller[prop] = value;
+			controller[prop] = value.replace(PLACEHOLDER_REGEX, function (sub, param) {
+				var $parser = parser(component, param);
+
+				return $parser.get();
+			});
 		} else {
 			var $parser = parser(component, value);
 			

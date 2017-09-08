@@ -12,9 +12,9 @@ jeefo_javascript_parser@^0.0.17:
   dependencies:
     jeefo_tokenizer "^0.0.29"
 
-jeefo_preprocessor@^0.0.5:
-  version "0.0.5"
-  resolved "https://registry.yarnpkg.com/jeefo_preprocessor/-/jeefo_preprocessor-0.0.5.tgz#482c9b78c76ce55e9c34f39bc07106fb5078c795"
+jeefo_preprocessor@^0.0.6:
+  version "0.0.6"
+  resolved "https://registry.yarnpkg.com/jeefo_preprocessor/-/jeefo_preprocessor-0.0.6.tgz#4138bb9ae1a3bcc371a6bc051e90e70179a28f80"
   dependencies:
     jeefo_javascript_beautifier "^0.0.5"
     jeefo_javascript_parser "^0.0.17"
