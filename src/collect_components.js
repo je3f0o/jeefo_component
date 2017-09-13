@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : collect_components.js
 * Created at  : 2017-08-10
-* Updated at  : 2017-09-06
+* Updated at  : 2017-09-13
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -137,8 +137,6 @@ collect_components = function (nodes, container, parent, counter) {
 				component.directives.push(
 					new Directive(keys[j], cache.resolve_directive(keys[j]))
 				);
-
-				attrs.remove(keys[i]);
 			}
 		}
 
@@ -148,6 +146,11 @@ collect_components = function (nodes, container, parent, counter) {
 			component.id     = nodes[i].component_id = counter.id;
 			component.attrs  = attrs;
 			component.events = nodes[i].events;
+
+			j = component.directives.length;
+			while (j--) {
+				attrs.remove(component.directives[j].name);
+			}
 
 			_parent = component;
 			container.push(component);

@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : binder.js
 * Created at  : 2017-09-06
-* Updated at  : 2017-09-09
+* Updated at  : 2017-09-13
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -64,7 +64,7 @@ module.exports = function binder (component, controller, bindings) {
 
 		if (operator === '@') {
 			controller[prop] = value.replace(PLACEHOLDER_REGEX, function (sub, param) {
-				var $parser = parser(component, param);
+				var $parser = parser(component, param.trim());
 
 				return $parser.get();
 			});
