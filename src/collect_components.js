@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : collect_components.js
 * Created at  : 2017-08-10
-* Updated at  : 2017-09-13
+* Updated at  : 2017-09-14
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -15,24 +15,13 @@ _._._._._._._._._._._._._._._._._._._._._.*/
 
 var cache       = require("./cache"),
 	parser      = require("jeefo_template/parser"),
+	shived      = {},
 	Directive   = require("./directive"),
 	Component   = require("./component"),
 	components  = require("components"),
 	directives  = require("directives"),
 	transcluder = require("./transcluder"),
 	combine_template, collect_components,
-
-combine_pairs = function (pairs, other) {
-	for (var i = 0, keys = other.keys; i < keys.length; ++i) {
-		pairs.set(keys[i], other.values[keys[i]]);
-	}
-},
-
-combine_classes = function (class_list, other_list) {
-	for (var i = 0; i < other_list.length; ++i) {
-		class_list.add(other_list[i]);
-	}
-},
 
 transclude = function (nodes, children) {
 	transcluder.find(nodes);
@@ -72,19 +61,12 @@ combine_template = function (template, node) {
 		}
 	}
 
-	var nodes = parser(template), other = nodes[0];
-	
-	// Reason why other's property first is, we want keep other's order
-	combine_pairs(other.attrs, node.attrs);
-	combine_pairs(other.events, node.events);
-	combine_classes(other.class_list, node.class_list.list);
-
-	return other;
+	return parser(template);
 };
 
 collect_components = function (nodes, container, parent, counter) {
 	var i = 0, component = new Component(parent),
-		j, keys, name, attrs, other, _parent, directive;
+		j, keys, name, attrs, others, _parent, directive;
 
 	for (; i < nodes.length; ++i) {
 		name    = nodes[i].name;
@@ -115,17 +97,14 @@ collect_components = function (nodes, container, parent, counter) {
 			component.name       = name;
 			component.definition = cache.resolve_component(name);
 
-			other = combine_template(component.definition.template || "div", nodes[i]);
+			if (component.definition.template) {
+				others = combine_template(component.definition.template, nodes[i]);
 
-			if (nodes[i] !== other) {
-				if (other.children.length) {
-					transclude(other.children, nodes[i].children);
-				} else {
-					other.children = nodes[i].children;
+				if (nodes[i] !== others) {
+					transclude(others, nodes[i].children);
+					nodes[i].children = others;
 				}
 			}
-
-			nodes[i] = other;
 		}
 
 		// Normal directives
@@ -138,6 +117,14 @@ collect_components = function (nodes, container, parent, counter) {
 					new Directive(keys[j], cache.resolve_directive(keys[j]))
 				);
 			}
+		}
+
+		if (component.name && ! shived[component.name]) {
+			document.createElement(component.name);
+			shived[component.name] = true;
+		}
+		if (! nodes[i].name) {
+			nodes[i].name = component.name || "div";
 		}
 
 		if (component.name || nodes[i].events.keys.length || component.directives.length) {
