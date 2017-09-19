@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : build.js
 * Created at  : 2017-08-24
-* Updated at  : 2017-09-06
+* Updated at  : 2017-09-19
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -67,11 +67,18 @@ var files = [
 	"compiler/nodes",
 	"compiler/element",
 	"compiler/template",
-	"jf_bind_directive",
-	"for_each_directive",
 	"collect_components",
 	"compiler/build_nodes",
 	"make_directive_controller",
+
+	"directives/input",
+	"directives/parser",
+	"directives/compiler",
+	"directives/tokenizer",
+	"directives/symbol_table",
+	"directives/if_directive",
+	"directives/jf_bind_directive",
+	"directives/for_each_directive",
 ];
 
 files.forEach(function (file) {

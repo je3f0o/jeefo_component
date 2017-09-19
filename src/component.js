@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : component.js
 * Created at  : 2017-07-24
-* Updated at  : 2017-08-31
+* Updated at  : 2017-09-19
 * Author      : jeefo
 * Purpose     : Make possible to create a self contained web component.
 * Description : Internal class of Jeefo-Framework's jeefo.directive module.
@@ -95,7 +95,7 @@ compile_self = function (component) {
 
 	return $q.when(component).then(function (component) {
 		component.$element = jqlite(component.element);
-		constructor(component, component);
+		constructor(component, component, true);
 
 		return component;
 	});
@@ -126,7 +126,7 @@ listen_events = function (component) {
 		names = events.keys, i = names.length;
 
 	while (i--) {
-		$element.on(names[i], parser(component, events.values[names[i]]).getter());
+		$element.on(names[i], parser(component, events.values[names[i]]).get());
 	}
 
 	return component;

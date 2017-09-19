@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : parser.js
 * Created at  : 2017-07-25
-* Updated at  : 2017-09-06
+* Updated at  : 2017-09-19
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -33,9 +33,9 @@ find_controller = function  (component, property_name) {
 	if (component.parent) {
 		return find_controller(component.parent, property_name);
 	}
-};
+},
 
-module.exports = function parser (component, code) {
+parser = function (component, code) {
 	var $parser = primitive(code);
 
 	if ($parser) {
@@ -75,3 +75,7 @@ module.exports = function parser (component, code) {
 		}
 	};
 };
+
+parser.find_controller = find_controller;
+
+module.exports = parser;

@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : for_each_directive.js
 * Created at  : 2017-07-25
-* Updated at  : 2017-09-06
+* Updated at  : 2017-09-19
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -13,63 +13,59 @@ _._._._._._._._._._._._._._._._._._._._._.*/
 
 // ignore:end
 
-var jqlite        = require("jeefo_jqlite"),
+var Input         = require("./input"),
+	parser        = require("./parser"),
+	jqlite        = require("jeefo_jqlite"),
 	$animator     = require("jeefo_animate"),
-	tokenizer     = require("jeefo_javascript_parser/src/es5/tokenizer"),
-	compile_nodes = require("./compiler/nodes"),
+	compile_nodes = require("../compiler/nodes");
 
-parse_input = function (str) {
-	tokenizer.init(str);
-	var input = {}, token = tokenizer.next();
+var build = function (input, code) {
+	var expr = parser.parse(code)[0].expression;
 
-	if (token.type === "Identifier") {
-		input.variable = token.name;
-	}
+	input.name = expr.left.name;
 
-	token = tokenizer.next();
-	if (token.name === "in") {
-		token = tokenizer.next();
-	}
+	input.init(code);
+	code = input.compile(expr.right);
 
-	if (token.type === "Identifier") {
-		input.input = token.name;
-	}
-
-	return input;
+	input.build_getter(code);
 };
 
 export default {
-	priority   : 1000,
-	selector   : "for-each",
+	priority : 1000,
+	selector : "for-each",
+	bindings : {
+		$expr : "@forEach"
+	},
 	controller : {
 		on_init : function ($parser, $component) {
-			var code     = $component.attrs.values["for-each"],
-				input    = parse_input(code),
-				$element = $component.$element;
-
-			this.name       = input.variable;
-			this.$parser    = $parser(input.input);
+			this.$input     = new Input($parser);
 			this.$component = $component;
+
+			build(this.$input, this.$expr);
 			
 			// Clone dom tree
 			this.node = $component.node;
 
 			// Insert comment before remove $element
-			this.$comment = jqlite(document.createComment(` For each: ${ code } `));
-			$element.before(this.$comment[0]);
+			this.$comment = jqlite(document.createComment(` For each: ${ this.$expr } `));
+			$component.$element.before(this.$comment[0]);
 
 			// Remove element and reset component
-			$element.remove();
+			$component.$element.remove();
 			this.$last_element = this.$comment;
+
+			this.$children = [];
 
 			this.on_digest();
 		},
 		on_digest : function () {
 			var i             = 0,
-				values        = this.$parser.get(),
+				values        = this.$input.get(),
 				children      = this.$component.children,
 				stagger_index = 0,
 				removed_components;
+
+			if (! values) { return; }
 
 			this.$last_element = this.$comment;
 			for (; i < values.length; ++i) {
@@ -101,7 +97,7 @@ export default {
 
 			component.controller    = { $index : index };
 			component.controller_as = this.name;
-			component.controller[this.name] = value;
+			component.controller[this.$input.name] = value;
 			
 			var element = compile_nodes([node], component).firstChild;
 			component.$element = jqlite(element);
@@ -110,6 +106,16 @@ export default {
 			this.$last_element.after(element);
 
 			$animator.enter(component.$element, stagger_index);
+
+			this.$children.push(component);
+		},
+		on_render : function () {
+			if (this.$children.length) {
+				for (var i = 0; i < this.$children.length; ++i) {
+					this.$children[i].trigger_render();
+				}
+				this.$children = [];
+			}
 		}
 	}
 };

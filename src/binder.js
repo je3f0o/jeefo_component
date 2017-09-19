@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : binder.js
 * Created at  : 2017-09-06
-* Updated at  : 2017-09-13
+* Updated at  : 2017-09-17
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -48,8 +48,11 @@ bind_two_way = function ($parser, controller, controller_property) {
 	return change_detector;
 };
 
-module.exports = function binder (component, controller, bindings) {
-	var attrs = component.attrs;
+module.exports = function binder (component, instance) {
+	var attrs            = component.attrs,
+		bindings         = instance.definition.bindings,
+		controller       = instance.controller,
+		change_detectors = instance.change_detectors;
 
 	object_keys(bindings).forEach(function (prop) {
 		var key      = bindings[prop],
@@ -64,9 +67,31 @@ module.exports = function binder (component, controller, bindings) {
 
 		if (operator === '@') {
 			controller[prop] = value.replace(PLACEHOLDER_REGEX, function (sub, param) {
-				var $parser = parser(component, param.trim());
+				param = param.trim();
+				var $parser = parser(component, param),
+					_value  = $parser.get();
 
-				return $parser.get();
+				change_detectors.push({
+					value      : _value,
+					$parser    : $parser,
+					is_changed : function () {
+						var _value = this.$parser.get();
+						if (this.value !== _value) {
+							controller[prop] = value.replace(PLACEHOLDER_REGEX, function (_sub, _param) {
+								_param = _param.trim();
+								if (param === _param) {
+									return _value;
+								}
+								return _param;
+							});
+
+							this.value = _value;
+							return true;
+						}
+					}
+				});
+
+				return _value;
 			});
 		} else {
 			var $parser = parser(component, value);
@@ -78,10 +103,10 @@ module.exports = function binder (component, controller, bindings) {
 
 			switch (operator) {
 				case '=' :
-					component.change_detectors.push(bind_two_way($parser, controller, prop));
+					change_detectors.push(bind_two_way($parser, controller, prop));
 					break;
 				case '<' :
-					component.change_detectors.push(bind_one_way($parser, controller, prop));
+					change_detectors.push(bind_one_way($parser, controller, prop));
 					break;
 				case '!' :
 					controller[prop] = $parser.get();
