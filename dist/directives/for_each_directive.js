@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : for_each_directive.js
 * Created at  : 2017-07-25
-* Updated at  : 2017-09-19
+* Updated at  : 2017-09-20
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -86,22 +86,24 @@ module.exports = {
 			}
 		},
 		create_component : function (index, value, stagger_index) {
-			var node      = this.node.clone(),
-				component = this.$component.inherit();
+			var self      = this,
+				node      = self.node.clone(),
+				component = self.$component.inherit();
 
 			component.controller    = { $index : index };
-			component.controller_as = this.name;
-			component.controller[this.$input.name] = value;
+			component.controller_as = self.name;
+			component.controller[self.$input.name] = value;
 			
-			var element = compile_nodes([node], component).firstChild;
-			component.$element = jqlite(element);
+			compile_nodes([node], component).then(function (fragment) {
+				component.$element = jqlite(fragment.firstChild);
 
-			this.$component.children[index] = component;
-			this.$last_element.after(element);
+				self.$component.children[index] = component;
+				self.$last_element.after(fragment);
 
-			$animator.enter(component.$element, stagger_index);
+				$animator.enter(component.$element, stagger_index);
 
-			this.$children.push(component);
+				self.$children.push(component);
+			});
 		},
 		on_render : function () {
 			if (this.$children.length) {

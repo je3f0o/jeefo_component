@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : if_directive.js
 * Created at  : 2017-09-17
-* Updated at  : 2017-09-19
+* Updated at  : 2017-09-20
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -62,14 +62,14 @@ export default {
 			}
 		},
 		create_component : function () {
-			var node = this.node.clone();
+			var node            = this.node.clone(),
+				comment         = this.$comment,
+				child_component = this.$child_component = this.$component.inherit();
 
-			this.$child_component = this.$component.inherit();
-
-			var element = compile_nodes([node], this.$child_component).firstChild;
-			this.$comment.after(element);
-
-			this.$child_component.trigger_render();
+			compile_nodes([node], this.$child_component).then(function (fragment) {
+				comment.after(fragment);
+				child_component.trigger_render();
+			});
 		},
 		on_render : function () {
 			if (this.$child_component) {

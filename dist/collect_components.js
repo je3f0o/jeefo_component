@@ -1,21 +1,21 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : collect_components.js
 * Created at  : 2017-08-10
-* Updated at  : 2017-09-14
+* Updated at  : 2017-09-20
 * Author      : jeefo
 * Purpose     :
 * Description :
 _._._._._._._._._._._._._._._._._._._._._.*/
 
-var cache       = require("./cache"),
-	parser      = require("jeefo_template/parser"),
-	shived      = {},
-	Directive   = require("./directive"),
-	Component   = require("./component"),
-	components  = require("components"),
-	directives  = require("directives"),
-	transcluder = require("./transcluder"),
-	combine_template, collect_components,
+var $q                = require("jeefo/q"),
+	cache             = require("./cache"),
+	Directive         = require("./directive"),
+	Component         = require("./component"),
+	components        = require("components"),
+	directives        = require("directives"),
+	transcluder       = require("./transcluder"),
+	template_resolver = require("./template_resolver"),
+	collect_components,
 
 transclude = function (nodes, children) {
 	transcluder.find(nodes);
@@ -45,22 +45,33 @@ structural_directive = function (attrs) {
 	}
 
 	return result;
-};
+},
 
-combine_template = function (template, node) {
-	if (typeof template === "function") {
-		template = template(node);
-		if (! template) {
-			return node;
+make_template_resolver = function (nodes, i, container, _parent, counter) {
+	var node = nodes[i].clone();
+
+	nodes[i].clear();
+
+	return function (others) {
+		var local_promises = [];
+		if (node.children.length) {
+			transclude(others, node.children);
 		}
-	}
 
-	return parser(template);
+		node.children    = others;
+		node.is_resolved = true;
+
+		collect_components([node], container, local_promises, _parent, counter);
+
+		return $q.all(local_promises).then(function () {
+			nodes[i] = node;
+		});
+	};
 };
 
-collect_components = function (nodes, container, parent, counter) {
+collect_components = function (nodes, container, promises, parent, counter) {
 	var i = 0, component = new Component(parent),
-		j, keys, name, attrs, others, _parent, directive;
+		j, keys, name, attrs, others, promise, _parent, directive;
 
 	for (; i < nodes.length; ++i) {
 		name    = nodes[i].name;
@@ -92,12 +103,21 @@ collect_components = function (nodes, container, parent, counter) {
 			component.definition = cache.resolve_component(name);
 
 			if (component.definition.template) {
-				others = combine_template(component.definition.template, nodes[i]);
+				if (component.definition.template) {
+					others = template_resolver.resolve_template(component.definition.template, nodes[i]);
 
-				if (nodes[i] !== others) {
-					transclude(others, nodes[i].children);
-					nodes[i].children = others;
+					if (nodes[i] !== others) {
+						transclude(others, nodes[i].children);
+						nodes[i].children = others;
+					}
 				}
+			} else if (component.definition.template_url && ! nodes[i].is_resolved) {
+				promise = template_resolver.resolve_template_url(component.definition.template_url, nodes[i]).
+					then(make_template_resolver(nodes, i, container, parent, counter));
+
+				promises.push(promise);
+
+				component.name = null;
 			}
 		}
 
@@ -113,10 +133,6 @@ collect_components = function (nodes, container, parent, counter) {
 			}
 		}
 
-		if (component.name && ! shived[component.name]) {
-			document.createElement(component.name);
-			shived[component.name] = true;
-		}
 		if (! nodes[i].name) {
 			nodes[i].name = component.name || "div";
 		}
@@ -139,7 +155,7 @@ collect_components = function (nodes, container, parent, counter) {
 			component = new Component(parent);
 		}
 
-		collect_components(nodes[i].children, container, _parent, counter);
+		collect_components(nodes[i].children, container, promises, _parent, counter);
 	}
 };
 

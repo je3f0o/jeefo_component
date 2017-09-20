@@ -1,26 +1,20 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : nodes.js
 * Created at  : 2017-08-26
-* Updated at  : 2017-08-26
+* Updated at  : 2017-09-20
 * Author      : jeefo
 * Purpose     :
 * Description :
 _._._._._._._._._._._._._._._._._._._._._.*/
 
-var jqlite             = require("jeefo_jqlite"),
+var $q                 = require("jeefo/q"),
+	jqlite             = require("jeefo_jqlite"),
 	counter            = require("../counter"),
 	collect_components = require("../collect_components");
 
-/**
- * @doc
- * @param template : jeefo template string.
- * @param parent   : parent directive object.
- * @return Document fragment object
- */
-module.exports = function compile_nodes (nodes, parent) {
-	var i = nodes.length, fragment = document.createDocumentFragment(), subcomponents = [], template = '';
+var compile_fragment = function (nodes, subcomponents) {
+	var i = nodes.length, fragment = document.createDocumentFragment(), template = '';
 
-	collect_components(nodes, subcomponents, parent, counter);
 	while (i--) {
 		template = nodes[i].compile('', '') + template;
 	}
@@ -44,4 +38,20 @@ module.exports = function compile_nodes (nodes, parent) {
 	}
 
 	return fragment;
+};
+
+/**
+ * @doc
+ * @param template : jeefo template string.
+ * @param parent   : parent directive object.
+ * @return Document fragment object
+ */
+module.exports = function compile_nodes (nodes, parent) {
+	var promises = [], subcomponents = [];
+
+	collect_components(nodes, subcomponents, promises, parent, counter);
+
+	return $q.all(promises).then(function () {
+		return compile_fragment(nodes, subcomponents);
+	});
 };

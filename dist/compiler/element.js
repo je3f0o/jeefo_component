@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : element.js
 * Created at  : 2017-08-26
-* Updated at  : 2017-08-31
+* Updated at  : 2017-09-20
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -31,7 +31,8 @@ if (! ("nextElementSibling" in document.documentElement)) {
 }
 // }}}1
 
-var cache              = require("../cache"),
+var $q                 = require("jeefo/q"),
+	cache              = require("../cache"),
 	jqlite             = require("jeefo_jqlite"),
 	counter            = require("../counter"),
 	Directive          = require("../directive"),
@@ -43,10 +44,26 @@ var cache              = require("../cache"),
 	EVENT_REGEX        = require("../config").EVENT_REGEX,
 	collect_components = require("../collect_components"),
 
-collect_components_from_element = function (element, container, parent, counter) {
+make_template_resolver = function (node, name, container, promises, parent, counter) {
+	var $old_element = jqlite(node), local_promises = [];
+
+	node = [ new NodeElement({ name : name }) ];
+	build_nodes(node[0], $old_element[0]);
+
+	collect_components(node, container, local_promises, parent, counter);
+
+	var promise = $q.all(local_promises).then(function () {
+		node = jqlite(node[0].compile('', ''))[0];
+		$old_element.replace_with(node);
+	});
+
+	promises.push(promise);
+},
+
+collect_components_from_element = function (element, container, promises, parent, counter) {
 	var node      = element.firstElementChild,
 		component = new Component(parent),
-		i, name, attrs, match, _parent, $old_element;
+		i, name, attrs, match, _parent;
 
 	while (node) {
 		name    = node.tagName.toLowerCase();
@@ -54,15 +71,7 @@ collect_components_from_element = function (element, container, parent, counter)
 
 		// Replace node element
 		if (components[name]) {
-			$old_element = jqlite(node);
-
-			node = [ new NodeElement({ name : name }) ];
-			build_nodes(node[0], $old_element[0]);
-
-			collect_components(node, container, parent, counter);
-			node = jqlite(node[0].compile('', ''))[0];
-
-			$old_element.replace_with(node);
+			make_template_resolver(node, name, container, promises, parent, counter);
 		} else {
 			// Original node element
 			for (i = 0, attrs = node.attributes; i < attrs.length; ++i) {
@@ -91,7 +100,7 @@ collect_components_from_element = function (element, container, parent, counter)
 
 			component = new Component(parent);
 		} else {
-			collect_components_from_element(node, container, parent, counter);
+			collect_components_from_element(node, container, promises, parent, counter);
 		}
 
 		node = node.nextElementSibling;
@@ -99,23 +108,25 @@ collect_components_from_element = function (element, container, parent, counter)
 };
 
 module.exports = function compile_element (element, parent) {
-	var subcomponents = [];
+	var subcomponents = [], promises = [];
 
-	collect_components_from_element(element, subcomponents, parent, counter);
+	collect_components_from_element(element, subcomponents, promises, parent, counter);
 
-	var elements = element.querySelectorAll("[jeefo-component-id]"),
-		i = elements.length, map = {}, id;
+	$q.all(promises).then(function () {
+		var elements = element.querySelectorAll("[jeefo-component-id]"),
+			i = elements.length, map = {}, id;
 
-	while (i--) {
-		id = elements[i].getAttribute("jeefo-component-id");
-		map[id] = elements[i];
-	}
+		while (i--) {
+			id = elements[i].getAttribute("jeefo-component-id");
+			map[id] = elements[i];
+		}
 
-	// Compile subdirectives
-	for (i = 0; i < subcomponents.length; ++i) {
-		id = subcomponents[i].id;
-		subcomponents[i].element = map[id];
+		// Compile subdirectives
+		for (i = 0; i < subcomponents.length; ++i) {
+			id = subcomponents[i].id;
+			subcomponents[i].element = map[id];
 
-		subcomponents[i].compile();
-	}
+			subcomponents[i].compile();
+		}
+	});
 };

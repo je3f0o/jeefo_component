@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : build.js
 * Created at  : 2017-08-24
-* Updated at  : 2017-09-19
+* Updated at  : 2017-09-20
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -64,6 +64,8 @@ var files = [
 	"directive",
 	"constructor",
 	"transcluder",
+	"template_cache",
+	"template_resolver",
 	"compiler/nodes",
 	"compiler/element",
 	"compiler/template",
