@@ -1,32 +1,23 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : if_directive.js
 * Created at  : 2017-09-17
-* Updated at  : 2017-09-20
+* Updated at  : 2017-11-06
 * Author      : jeefo
 * Purpose     :
 * Description :
 _._._._._._._._._._._._._._._._._._._._._.*/
 // ignore:start
+"use strict";
 
 /* globals */
 /* exported */
 
 // ignore:end
 
-var Input         = require("./input"),
-	parser        = require("./parser"),
+var Input         = require("../input"),
 	jqlite        = require("jeefo_jqlite"),
 	$animator     = require("jeefo_animate"),
-	compile_nodes = require("../compiler/nodes"),
-
-build = function (input, code) {
-	var expr = parser.parse(code)[0].expression;
-
-	input.init(code);
-	code = input.compile(expr);
-
-	input.build_getter(code);
-};
+	compile_nodes = require("../compiler/nodes");
 
 export default {
 	priority : 900,
@@ -35,11 +26,9 @@ export default {
 		$condition : "@if"
 	},
 	controller : {
-		on_init : function ($parser, $component) {
-			this.$input     = new Input($parser);
+		on_init : function ($component) {
+			this.$input     = new Input($component, this.$condition);
 			this.$component = $component;
-
-			build(this.$input, this.$condition);
 			
 			// Clone dom tree
 			this.node = $component.node;
@@ -49,32 +38,33 @@ export default {
 			$component.$element.before(this.$comment[0]);
 			$component.$element.remove();
 
-			this.on_change();
+			this.on_digest();
 		},
-		on_change : function () {
-			if (this.$input.get()) {
+		on_digest : function () {
+			if (this.$input.invoke()) {
 				if (! this.$is_rendered) {
 					this.create_component();
 					this.$is_rendered = true;
 				}
 			} else if (this.$is_rendered) {
-
+				this.$component.children[0].remove();
+				this.$is_rendered = false;
 			}
 		},
 		create_component : function () {
-			var node            = this.node.clone(),
-				comment         = this.$comment,
-				child_component = this.$child_component = this.$component.inherit();
+			var self      = this,
+				node      = self.node.clone(),
+				comment   = self.$comment,
+				component = self.$component.inherit();
 
-			compile_nodes([node], this.$child_component).then(function (fragment) {
+			compile_nodes([node], component).then(function (fragment) {
+				component.$element = jqlite(fragment.firstChild);
+
 				comment.after(fragment);
-				child_component.trigger_render();
+				self.$component.children.push(component);
+
+				component.trigger_render();
 			});
 		},
-		on_render : function () {
-			if (this.$child_component) {
-				this.$child_component.trigger_render();
-			}
-		}
 	}
 };

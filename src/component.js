@@ -1,12 +1,13 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : component.js
 * Created at  : 2017-07-24
-* Updated at  : 2017-09-19
+* Updated at  : 2017-10-29
 * Author      : jeefo
 * Purpose     : Make possible to create a self contained web component.
-* Description : Internal class of Jeefo-Framework's jeefo.directive module.
+* Description : Internal class of Jeefo-Framework.
 _._._._._._._._._._._._._._._._._._._._._.*/
 // ignore:start
+"use strict";
 
 /* globals */
 /* exported */
@@ -53,10 +54,9 @@ _._._._._._._._._._._._._._._._._._._._._.*/
 // Variables {{{1
 var assign       = require("jeefo_utils/object/assign"),
 	$q           = assign({}, require("jeefo_q")),
+	Input        = require("./input"),
 	Events       = require("jeefo_template/events"),
 	jqlite       = require("jeefo_jqlite"),
-	parser       = require("./parser"),
-	$resource    = require("jeefo_resource"),
 	$animator    = require("jeefo_animate"),
 	constructor  = require("./constructor"),
 	array_remove = require("jeefo_utils/array/remove"),
@@ -120,13 +120,20 @@ compile_post = function (component) {
 },
 
 // Listen events {{{1
+make_event_closur = function (input) {
+	return function (event) {
+		return input.invoke({ $event : event });
+	};
+},
+
 listen_events = function (component) {
 	var events   = component.events,
 		$element = component.$element,
-		names = events.keys, i = names.length;
+		names = events.keys, i = names.length, input;
 
 	while (i--) {
-		$element.on(names[i], parser(component, events.values[names[i]]).get());
+		input = new Input(component, events.values[names[i]]);
+		$element.on(names[i], make_event_closur(input));
 	}
 
 	return component;

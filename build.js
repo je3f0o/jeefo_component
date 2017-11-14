@@ -1,12 +1,13 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : build.js
 * Created at  : 2017-08-24
-* Updated at  : 2017-09-20
+* Updated at  : 2017-10-02
 * Author      : jeefo
 * Purpose     :
 * Description :
 _._._._._._._._._._._._._._._._._._._._._.*/
 // ignore:start
+"use strict";
 
 /* globals */
 /* exported */
@@ -56,7 +57,6 @@ var files = [
 	"index",
 	"cache",
 	"config",
-	"parser",
 	"binder",
 	"counter",
 	"observer",
@@ -66,18 +66,21 @@ var files = [
 	"transcluder",
 	"template_cache",
 	"template_resolver",
+	"collect_components",
+	"make_directive_controller",
+
 	"compiler/nodes",
 	"compiler/element",
 	"compiler/template",
-	"collect_components",
 	"compiler/build_nodes",
-	"make_directive_controller",
 
-	"directives/input",
-	"directives/parser",
-	"directives/compiler",
-	"directives/tokenizer",
-	"directives/symbol_table",
+	"input/index",
+	"input/parser",
+	"input/compiler",
+	"input/tokenizer",
+	"input/get_string",
+	"input/symbol_table",
+
 	"directives/if_directive",
 	"directives/jf_bind_directive",
 	"directives/for_each_directive",

@@ -1,27 +1,71 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : for_each_directive.js
 * Created at  : 2017-07-25
-* Updated at  : 2017-09-20
+* Updated at  : 2017-11-01
 * Author      : jeefo
 * Purpose     :
 * Description :
 _._._._._._._._._._._._._._._._._._._._._.*/
 
-var Input         = require("./input"),
-	parser        = require("./parser"),
+var Input         = require("../input"),
 	jqlite        = require("jeefo_jqlite"),
+	parser        = require("../input/parser"),
 	$animator     = require("jeefo_animate"),
 	compile_nodes = require("../compiler/nodes");
 
-var build = function (input, code) {
-	var expr = parser.parse(code)[0].expression;
+var add_children = function (instance, values) {
+	var i        = values.length,
+		prop     = instance.$variable,
+		_values  = [],
+		children = instance.$component.children,
+		stagger_index = 0, value, index;
 
-	input.name = expr.left.name;
+	while (i--) {
+		_values[i] = values[i];
+	}
 
-	input.init(code);
-	code = input.compile(expr.right);
+	i = children.length;
+	while (i--) {
+		value = children[i].controller[prop];
+		index = _values.indexOf(value);
+		if (index !== -1) {
+			_values.splice(index, 1);
+		}
+	}
 
-	input.build_getter(code);
+	for (i = 0; i < _values.length; ++i) {
+		value = _values[i];
+		index = values.indexOf(value);
+
+		instance.create_component(index, value, stagger_index++);
+	}
+};
+
+var remove_children = function (children, values, prop) {
+	var i = children.length, _children = [], value, index;
+
+	while (i--) {
+		_children[i] = children[i];
+	}
+
+	i = _children.length;
+	while (i--) {
+		value = _children[i].controller[prop];
+		index = values.indexOf(value);
+		if (index !== -1) {
+			_children.splice(i, 1);
+		}
+	}
+
+	i = _children.length;
+	while (i--) {
+		_children[i].remove();
+	}
+
+	i = children.length;
+	while (i--) {
+		children[i].controller.$index = i;
+	}
 };
 
 module.exports = {
@@ -31,11 +75,13 @@ module.exports = {
 		$expr : "@forEach"
 	},
 	controller : {
-		on_init : function ($parser, $component) {
-			this.$input     = new Input($parser);
+		on_init : function ($component) {
 			this.$component = $component;
 
-			build(this.$input, this.$expr);
+			var expr = parser.parse(this.$expr)[0].expression;
+
+			this.$input    = new Input($component, this.$expr.substring(expr.right.start.index));
+			this.$variable = expr.left.name;
 			
 			// Clone dom tree
 			this.node = $component.node;
@@ -53,36 +99,25 @@ module.exports = {
 			this.on_digest();
 		},
 		on_digest : function () {
-			var i             = 0,
-				values        = this.$input.get(),
-				children      = this.$component.children,
-				stagger_index = 0,
-				removed_components;
+			var values   = this.$input.invoke(),
+				children = this.$component.children;
 
 			if (! values) { return; }
 
-			this.$last_element = this.$comment;
-			for (; i < values.length; ++i) {
-				if (children[i]) {
-					children[i].controller.$index     = i;
-					children[i].controller[this.name] = values[i];
-				} else {
-					this.create_component(i, values[i], stagger_index++);
+			if (values.length < children.length) {
+				remove_children(children, values, this.$variable);
+			} else if (values.length > children.length) {
+				add_children(this, values);
+			} else {
+				var i = values.length;
+				while (i--) {
+					children[i].controller.$index          = i;
+					children[i].controller[this.$variable] = values[i];
 				}
-
-				this.$last_element = children[i].$element;
 			}
 
-			if (i < children.length) {
-				removed_components = children.splice(i);
-				i = removed_components.length;
-				while (i--) {
-					removed_components[i].children[0].remove();
-				}
-
-				if (children.length) {
-					this.$last_element = children[children.length - 1].$element;
-				}
+			if (children.length) {
+				this.$last_element = children[children.length - 1].$element;
 			}
 		},
 		create_component : function (index, value, stagger_index) {
@@ -92,13 +127,17 @@ module.exports = {
 
 			component.controller    = { $index : index };
 			component.controller_as = self.name;
-			component.controller[self.$input.name] = value;
+			component.controller[self.$variable] = value;
 			
 			compile_nodes([node], component).then(function (fragment) {
 				component.$element = jqlite(fragment.firstChild);
 
-				self.$component.children[index] = component;
-				self.$last_element.after(fragment);
+				if (self.$component.children[index - 1]) {
+					self.$component.children[index - 1].$element.after(fragment);
+				} else {
+					self.$comment.after(fragment);
+				}
+				self.$component.children.splice(index, 0, component);
 
 				$animator.enter(component.$element, stagger_index);
 

@@ -1,20 +1,21 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : tokenizer.js
 * Created at  : 2017-09-18
-* Updated at  : 2017-09-18
+* Updated at  : 2017-09-28
 * Author      : jeefo
 * Purpose     :
 * Description :
 _._._._._._._._._._._._._._._._._._._._._.*/
 // ignore:start
+"use strict";
 
 /* globals */
 /* exported */
 
 // ignore:end
 
-var assign     = require("jeefo/utils/object/assign"),
-	Tokenizer  = require("jeefo/tokenizer"),
+var assign     = require("jeefo_utils/object/assign"),
+	Tokenizer  = require("jeefo_tokenizer"),
 	DELIMITERS = [
 		'.', ',',
 		'/', '?',
