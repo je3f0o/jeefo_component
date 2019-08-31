@@ -1,16 +1,18 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : collect_components.js
 * Created at  : 2017-08-10
-* Updated at  : 2017-09-20
+* Updated at  : 2018-12-19
 * Author      : jeefo
 * Purpose     :
 * Description :
 _._._._._._._._._._._._._._._._._._._._._.*/
 // ignore:start
+"use strict";
 
 /* globals */
 /* exported */
 
+// @TODO: use Preprocessor instread bunch of nodes[i]
 /* do i really need to shiv elements in 2017 ???
 	shived            = {},
 
@@ -19,6 +21,8 @@ _._._._._._._._._._._._._._._._._._._._._.*/
 		shived[component.name] = true;
 	}
 */
+
+//PP.define("current_node",,)
 
 // ignore:end
 
@@ -33,7 +37,7 @@ var $q                = require("jeefo/q"),
 	collect_components,
 
 transclude = function (nodes, children) {
-	transcluder.find(nodes);
+	transcluder.initialize(nodes);
 
 	for (var i = 0; i < children.length; ++i) {
 		transcluder.add_node(children[i]);
@@ -86,25 +90,26 @@ make_template_resolver = function (nodes, i, container, _parent, counter) {
 
 collect_components = function (nodes, container, promises, parent, counter) {
 	var i = 0, component = new Component(parent),
-		j, keys, name, attrs, others, promise, _parent, directive;
+		j, keys, name, attrs, others, promise, _parent, directive, current_node;
 
 	for (; i < nodes.length; ++i) {
-		name    = nodes[i].name;
+		current_node = nodes[i];
+		name    = current_node.name;
 		_parent = parent;
 
 		// Structural directive
-		directive = structural_directive(nodes[i].attrs);
+		directive = structural_directive(current_node.attrs);
 		if (directive) {
 			counter.increment();
 
-			component.id    = nodes[i].component_id = counter.id;
-			component.attrs = nodes[i].attrs;
+			component.id    = current_node.component_id = counter.id;
+			component.attrs = current_node.attrs;
 
-			component.node       = nodes[i].clone();
+			component.node       = current_node.clone();
 			component.name       = directive.name;
 			component.definition = directive.definition;
 
-			nodes[i].clear();
+			current_node.clear();
 
 			container.push(component);
 			component = new Component(parent);
@@ -118,16 +123,19 @@ collect_components = function (nodes, container, promises, parent, counter) {
 			component.definition = cache.resolve_component(name);
 
 			if (component.definition.template) {
-				if (component.definition.template) {
-					others = template_resolver.resolve_template(component.definition.template, nodes[i]);
+				others = template_resolver.resolve_template(component.definition.template, current_node);
 
-					if (nodes[i] !== others) {
-						transclude(others, nodes[i].children);
-						nodes[i].children = others;
+				if (current_node !== others) {
+					if (current_node.children.length) {
+						transclude(others, current_node.children);
+						current_node.children = others;
+					} else {
+						transcluder.initialize(nodes);
+						//transcluder.default_transcluder
 					}
 				}
-			} else if (component.definition.template_url && ! nodes[i].is_resolved) {
-				promise = template_resolver.resolve_template_url(component.definition.template_url, nodes[i]).
+			} else if (component.definition.template_url && ! current_node.is_resolved) {
+				promise = template_resolver.resolve_template_url(component.definition.template_url, current_node).
 					then(make_template_resolver(nodes, i, container, parent, counter));
 
 				promises.push(promise);
@@ -137,7 +145,7 @@ collect_components = function (nodes, container, promises, parent, counter) {
 		}
 
 		// Normal directives
-		attrs = nodes[i].attrs;
+		attrs = current_node.attrs;
 		keys  = attrs.keys;
 		j     = keys.length;
 		while (j--) {
@@ -148,16 +156,16 @@ collect_components = function (nodes, container, promises, parent, counter) {
 			}
 		}
 
-		if (! nodes[i].name) {
-			nodes[i].name = component.name || "div";
+		if (! current_node.name) {
+			current_node.name = component.name || "div";
 		}
 
-		if (component.name || nodes[i].events.keys.length || component.directives.length) {
+		if (component.name || current_node.events.keys.length || component.directives.length) {
 			counter.increment();
 
-			component.id     = nodes[i].component_id = counter.id;
+			component.id     = current_node.component_id = counter.id;
 			component.attrs  = attrs;
-			component.events = nodes[i].events;
+			component.events = current_node.events;
 
 			j = component.directives.length;
 			while (j--) {
@@ -170,7 +178,7 @@ collect_components = function (nodes, container, promises, parent, counter) {
 			component = new Component(parent);
 		}
 
-		collect_components(nodes[i].children, container, promises, _parent, counter);
+		collect_components(current_node.children, container, promises, _parent, counter);
 	}
 };
 

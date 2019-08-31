@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
-* File Name   : directive.js
-* Created at  : 2019-07-05
-* Updated at  : 2019-07-05
+* File Name   : invisible_component.js
+* Created at  : 2019-07-09
+* Updated at  : 2019-07-09
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -15,14 +15,10 @@
 
 // ignore:end
 
-class Directive {
+class InvisibleComponent {
     constructor () {
-
-    }
-
-    init (component) {
 
     }
 }
 
-module.exports = Directive;
+module.exports = InvisibleComponent;

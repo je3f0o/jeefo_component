@@ -1,12 +1,13 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : template_resolver.js
 * Created at  : 2017-09-20
-* Updated at  : 2017-09-20
+* Updated at  : 2018-12-19
 * Author      : jeefo
 * Purpose     :
 * Description :
 _._._._._._._._._._._._._._._._._._._._._.*/
 // ignore:start
+"use strict";
 
 /* globals */
 /* exported */
@@ -28,6 +29,13 @@ var clone_nodes = function (nodes) {
 	return result;
 };
 
+/**
+ * @TODO: refacter and update!
+ * @docs
+ * @desciption: 
+ * @returns resolved JeefoTemplateNodeElements or already node comes from 
+ * parameter.
+ */
 exports.resolve_template = function (template, node) {
 	if (IS_FUNCTION(template)) {
 		template = template(node);

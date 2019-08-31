@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : for_each_directive.js
 * Created at  : 2017-07-25
-* Updated at  : 2017-11-01
+* Updated at  : 2017-11-18
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -13,55 +13,34 @@ var Input         = require("../input"),
 	$animator     = require("jeefo_animate"),
 	compile_nodes = require("../compiler/nodes");
 
-var add_children = function (instance, values) {
-	var i        = values.length,
-		prop     = instance.$variable,
-		_values  = [],
-		children = instance.$component.children,
-		stagger_index = 0, value, index;
-
-	while (i--) {
-		_values[i] = values[i];
-	}
-
-	i = children.length;
+var digest_handler = function (instance, values) {
+	var prop          = instance.$variable,
+		children      = instance.$component.children,
+		old_values    = [],
+		stagger_index = 0,
+		i = children.length, value, index;
+	
+	// remove old values
 	while (i--) {
 		value = children[i].controller[prop];
-		index = _values.indexOf(value);
-		if (index !== -1) {
-			_values.splice(index, 1);
+		index = values.indexOf(value);
+		if (index === -1) {
+			children[i].remove();
+		} else {
+			old_values.push(value);
 		}
 	}
 
-	for (i = 0; i < _values.length; ++i) {
-		value = _values[i];
-		index = values.indexOf(value);
-
-		instance.create_component(index, value, stagger_index++);
-	}
-};
-
-var remove_children = function (children, values, prop) {
-	var i = children.length, _children = [], value, index;
-
-	while (i--) {
-		_children[i] = children[i];
-	}
-
-	i = _children.length;
-	while (i--) {
-		value = _children[i].controller[prop];
-		index = values.indexOf(value);
-		if (index !== -1) {
-			_children.splice(i, 1);
+	// add new values
+	for (i = 0; i < values.length; ++i) {
+		value = values[i];
+		index = old_values.indexOf(value);
+		if (index === -1) {
+			instance.create_component(i, value, stagger_index++);
 		}
 	}
 
-	i = _children.length;
-	while (i--) {
-		_children[i].remove();
-	}
-
+	// order
 	i = children.length;
 	while (i--) {
 		children[i].controller.$index = i;
@@ -92,40 +71,24 @@ module.exports = {
 
 			// Remove element and reset component
 			$component.$element.remove();
-			this.$last_element = this.$comment;
 
 			this.$children = [];
 
 			this.on_digest();
 		},
 		on_digest : function () {
-			var values   = this.$input.invoke(),
-				children = this.$component.children;
+			var values = this.$input.invoke();
 
 			if (! values) { return; }
 
-			if (values.length < children.length) {
-				remove_children(children, values, this.$variable);
-			} else if (values.length > children.length) {
-				add_children(this, values);
-			} else {
-				var i = values.length;
-				while (i--) {
-					children[i].controller.$index          = i;
-					children[i].controller[this.$variable] = values[i];
-				}
-			}
-
-			if (children.length) {
-				this.$last_element = children[children.length - 1].$element;
-			}
+			digest_handler(this, values);
 		},
 		create_component : function (index, value, stagger_index) {
 			var self      = this,
 				node      = self.node.clone(),
 				component = self.$component.inherit();
 
-			component.controller    = { $index : index };
+			component.controller    = {};
 			component.controller_as = self.name;
 			component.controller[self.$variable] = value;
 			
@@ -138,6 +101,16 @@ module.exports = {
 					self.$comment.after(fragment);
 				}
 				self.$component.children.splice(index, 0, component);
+
+				/*
+				if (self.$component.children.length) {
+					var index = self.$component.children.length - 1;
+					self.$component.children[index].$element.after(fragment);
+				} else {
+					self.$comment.after(fragment);
+				}
+				self.$component.children.push(component);
+				*/
 
 				$animator.enter(component.$element, stagger_index);
 

@@ -1,141 +1,171 @@
-/* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
+/* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : for_each_directive.js
 * Created at  : 2017-07-25
-* Updated at  : 2017-11-01
+* Updated at  : 2019-08-08
 * Author      : jeefo
 * Purpose     :
 * Description :
-_._._._._._._._._._._._._._._._._._._._._.*/
+* Reference   :
+.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.*/
 // ignore:start
 "use strict";
 
-/* globals */
-/* exported */
+/* globals*/
+/* exported*/
 
 // ignore:end
 
-var Input         = require("../input"),
-	jqlite        = require("jeefo_jqlite"),
-	parser        = require("../input/parser"),
-	$animator     = require("jeefo_animate"),
-	compile_nodes = require("../compiler/nodes");
+const jqlite             = require("@jeefo/jqlite");
+const parser             = require("../input/parser");
+const compile            = require("../compiler");
+const Interpreter        = require("../interpreter");
+const StructureComponent = require("../structure_component");
 
-var add_children = function (instance, values) {
-	var i        = values.length,
-		prop     = instance.$variable,
-		_values  = [],
-		children = instance.$component.children,
-		stagger_index = 0, value, index;
-
-	while (i--) {
-		_values[i] = values[i];
-	}
-
-	i = children.length;
-	while (i--) {
-		value = children[i].controller[prop];
-		index = _values.indexOf(value);
-		if (index !== -1) {
-			_values.splice(index, 1);
-		}
-	}
-
-	for (i = 0; i < _values.length; ++i) {
-		value = _values[i];
-		index = values.indexOf(value);
-
-		instance.create_component(index, value, stagger_index++);
-	}
+const definition = {
+    binders          : [],
+    dependencies     : [],
+    Controller       : class Controller {},
+    controller_name  : null,
+    is_self_required : false,
 };
 
-var remove_children = function (children, values, prop) {
-	var i = children.length, _children = [], value, index;
+function filter (components, values) {
+    const occurrences = [];
 
-	while (i--) {
-		_children[i] = children[i];
-	}
+    return components.filter(component => {
+        const value = component.value;
+        let i = occurrences.length, from_index = 0;
+        while (i--) {
+            if (occurrences[i].value === value) {
+                from_index = occurrences[i].index + 1;
+                break;
+            }
+        }
 
-	i = _children.length;
-	while (i--) {
-		value = _children[i].controller[prop];
-		index = values.indexOf(value);
-		if (index !== -1) {
-			_children.splice(i, 1);
-		}
-	}
+        const index = values.indexOf(value, from_index);
+        if (index >= 0) {
+            occurrences.push({ value, index });
+            return true;
+        }
+    });
+}
 
-	i = _children.length;
-	while (i--) {
-		_children[i].remove();
-	}
+function create_new_child (value, index, component) {
+    const new_child = new StructureComponent(null, definition, component);
+    const { variable_name, index_name } = component;
 
-	i = children.length;
-	while (i--) {
-		children[i].controller.$index = i;
-	}
-};
+    new_child.value                     = value;
+    new_child.index                     = index;
+    new_child.controller[index_name]    = index;
+    new_child.controller[variable_name] = value;
 
-export default {
-	priority : 1000,
+    const elements = compile([component.node.clone(true)], new_child);
+    new_child.$element = jqlite(elements[0]);
+
+    return new_child;
+}
+
+function create_children (children, values, component) {
+    const occurrences     = [];
+    const children_values = children.map(child => child.value);
+
+    return values.map((value, index) => {
+        let i = occurrences.length, from_index = 0;
+        while (i--) {
+            if (occurrences[i].value === value) {
+                from_index = occurrences[i].index + 1;
+                break;
+            }
+        }
+
+        const child_index = children_values.indexOf(value, from_index);
+        if (child_index >= 0) {
+            occurrences.push({ value, index : child_index });
+            return children[child_index];
+        }
+
+        return create_new_child(value, index, component);
+    });
+}
+
+module.exports = {
+    type     : "structure",
 	selector : "for-each",
-	bindings : {
-		$expr : "@forEach"
-	},
+	priority : 1000,
 	controller : {
-		on_init : function ($component) {
-			this.$component = $component;
+		on_init : function ($element, component) {
+            this["(component)"] = component;
 
-			var expr = parser.parse(this.$expr)[0].expression;
+            try {
+                const symbols  = parser.parse(component.expression);
+                const streamer = parser.tokenizer.streamer;
+                if (symbols.length > 1 ||
+                    symbols[0].id !== "Expression statement") {
+                    throw new SyntaxError("Invalid expression");
+                }
+                const expr   = symbols[0].expression;
+                const script = streamer.substring_from_token(expr.right);
+                component.interpreter   = new Interpreter(script, component);
+                component.variable_name = expr.left.value;
+                component.index_name    = "$index";
 
-			this.$input    = new Input($component, this.$expr.substring(expr.right.start.index));
-			this.$variable = expr.left.name;
-			
-			// Clone dom tree
-			this.node = $component.node;
+                const comment      = ` For each: ${ component.expression } `;
+                const comment_node = jqlite(document.createComment(comment));
+                this["(comment)"] = comment_node;
+                $element.replace(comment_node);
 
-			// Insert comment before remove $element
-			this.$comment = jqlite(document.createComment(` For each: ${ this.$expr } `));
-			$component.$element.before(this.$comment[0]);
-
-			// Remove element and reset component
-			$component.$element.remove();
-			this.$last_element = this.$comment;
-
-			this.$children = [];
-
-			this.on_digest();
+                this.on_digest();
+            } catch (e) {
+                throw e;
+            }
 		},
-		on_digest : function () {
-			var values   = this.$input.invoke(),
-				children = this.$component.children;
 
+		on_digest : function () {
+            const component = this["(component)"];
+            const { interpreter, index_name, is_attached } = component;
+            const values = interpreter.get_value();
 			if (! values) { return; }
 
-			if (values.length < children.length) {
-				remove_children(children, values, this.$variable);
-			} else if (values.length > children.length) {
-				add_children(this, values);
-			} else {
-				var i = values.length;
-				while (i--) {
-					children[i].controller.$index          = i;
-					children[i].controller[this.$variable] = values[i];
-				}
-			}
+            const filtered_children = filter(component.children, values);
 
-			if (children.length) {
-				this.$last_element = children[children.length - 1].$element;
-			}
+            component.children.forEach(child => {
+                if (! filtered_children.includes(child)) {
+                    child.destroy();
+                }
+            });
+
+            component.children = create_children(
+                filtered_children, values, component
+            );
+
+            component.children.forEach((child, index) => {
+                if (! child.is_attached || child.index !== index) {
+                    if (index === 0) {
+                        this["(comment)"].after(child.$element);
+                    } else {
+                        const prev = component.children[index - 1];
+                        prev.$element.after(child.$element);
+                    }
+
+                    child.index                  = index;
+                    child.controller[index_name] = index;
+
+                    if (is_attached && ! child.is_attached) {
+                        child.trigger_renderable();
+                    }
+                }
+            });
 		},
+        /*
 		create_component : function (index, value, stagger_index) {
 			var self      = this,
 				node      = self.node.clone(),
 				component = self.$component.inherit();
 
-			component.controller    = { $index : index };
+			component.controller    = {};
 			component.controller_as = self.name;
 			component.controller[self.$variable] = value;
-			
+
 			compile_nodes([node], component).then(function (fragment) {
 				component.$element = jqlite(fragment.firstChild);
 
@@ -145,19 +175,24 @@ export default {
 					self.$comment.after(fragment);
 				}
 				self.$component.children.splice(index, 0, component);
+                */
 
+				/*
+				if (self.$component.children.length) {
+					var index = self.$component.children.length - 1;
+					self.$component.children[index].$element.after(fragment);
+				} else {
+					self.$comment.after(fragment);
+				}
+				self.$component.children.push(component);
+				*/
+
+            /*
 				$animator.enter(component.$element, stagger_index);
 
 				self.$children.push(component);
 			});
 		},
-		on_render : function () {
-			if (this.$children.length) {
-				for (var i = 0; i < this.$children.length; ++i) {
-					this.$children[i].trigger_render();
-				}
-				this.$children = [];
-			}
-		}
+        */
 	}
 };

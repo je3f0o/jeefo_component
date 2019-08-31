@@ -1,5 +1,5 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
-* File Name   : directive.js
+* File Name   : types.js
 * Created at  : 2019-07-05
 * Updated at  : 2019-07-05
 * Author      : jeefo
@@ -15,14 +15,8 @@
 
 // ignore:end
 
-class Directive {
-    constructor () {
-
-    }
-
-    init (component) {
-
-    }
-}
-
-module.exports = Directive;
+module.exports = {
+    structure_component : 1,
+    structure_directive : 2,
+    attribute_directive : 3
+};
