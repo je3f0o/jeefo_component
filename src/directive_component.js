@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : directive_component.js
 * Created at  : 2019-07-06
-* Updated at  : 2019-07-12
+* Updated at  : 2019-09-13
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -22,7 +22,7 @@ class DirectiveComponent extends BaseComponent {
         super(name, definition);
     }
 
-    init (component) {
+    async init (component) {
         if (this.is_initialized) { return; }
 
         const { controller, dependencies } = this;
@@ -37,11 +37,18 @@ class DirectiveComponent extends BaseComponent {
                 controller[d.property] = dependency.controller;
             });
 
-            controller.on_init(component.$element);
+            await controller.on_init(component.$element);
         }
 
         this.is_initialized = true;
     }
+
+    async digest () {
+        if (this.is_initialized) {
+            await super.digest();
+        }
+    }
+
 }
 
 module.exports = DirectiveComponent;

@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : directive_definition.js
 * Created at  : 2017-08-07
-* Updated at  : 2019-07-21
+* Updated at  : 2019-09-13
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -10,17 +10,17 @@
 // ignore:start
 "use strict";
 
-/* globals*/
+/* globals jeefo*/
 /* exported*/
 
 // ignore:end
 
-const for_each    = require("@jeefo/utils/object/for_each");
-const dash_case   = require("@jeefo/utils/string/dash_case");
-const styles      = require("./styles");
-const IDefinition = require("./i_definition");
+const for_each      = require("@jeefo/utils/object/for_each");
+const dash_case     = require("@jeefo/utils/string/dash_case");
+const extend_member = require("@jeefo/utils/class/extend_member");
+const styles        = require("./styles");
+const IDefinition   = require("./i_definition");
 
-const define_property          = Object.defineProperty;
 const CAPTURE_DEPENDENCY_REGEX = /^(\^+)?(.+)$/;
 
 class DirectiveDefinition extends IDefinition {
@@ -30,11 +30,11 @@ class DirectiveDefinition extends IDefinition {
         this.is_structure = false;
     }
 
-    resolve () {
+    async resolve () {
         const {
             type, priority, style, controller, controller_name,
             bindings, dependencies = {}
-        } = require(this.path);
+        } = await jeefo.require(this.path, null);
 
         if (priority) { this.priority = priority; }
         if (type) {
@@ -57,12 +57,10 @@ class DirectiveDefinition extends IDefinition {
         if (controller) {
             class Controller {}
             if (typeof controller === "function") {
-                define_property(Controller.prototype, "on_init", {
-                    value : controller
-                });
+                extend_member(Controller, "on_init", controller);
             } else {
                 for_each(controller, (key, value) => {
-                    define_property(Controller.prototype, key, {value});
+                    extend_member(Controller, key, value);
                 });
             }
             this.Controller = Controller;

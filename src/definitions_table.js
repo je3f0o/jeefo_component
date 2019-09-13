@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : definitions_table.js
 * Created at  : 2019-06-24
-* Updated at  : 2019-07-09
+* Updated at  : 2019-09-10
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -67,22 +67,22 @@ class DefinitionsTable {
         }
     }
 
-    get_component (name) {
+    async get_component (name) {
         const component_definition = this.components[name];
         if (component_definition) {
             if (! component_definition.is_resolved) {
-                component_definition.resolve();
+                await component_definition.resolve();
             }
 
             return component_definition;
         }
     }
 
-    get_directive (name) {
+    async get_directive (name) {
         const directive_definition = this.directives[name];
         if (directive_definition) {
             if (! directive_definition.is_resolved) {
-                directive_definition.resolve();
+                await directive_definition.resolve();
             }
 
             return directive_definition;

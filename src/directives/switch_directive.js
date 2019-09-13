@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : switch_directive.js
 * Created at  : 2019-07-12
-* Updated at  : 2019-07-18
+* Updated at  : 2019-09-10
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -21,9 +21,9 @@ const Interpreter = require("../interpreter");
 
 module.exports = {
     type     : "structure",
-	selector : "switch",
-	priority : 900,
-	controller : function ($element, component) {
+    selector : "switch",
+    priority : 900,
+    controller : async function ($element, component) {
         const { node, expression } = component;
         try {
             const interpreter = new Interpreter(expression, component);
@@ -54,7 +54,7 @@ module.exports = {
                 }
             });
 
-            const elements = compile([node], component);
+            const elements = await compile([node], component);
             if (elements.length) {
                 component.$element = jqlite(elements[0]);
                 $element.replace(component.$element);
@@ -65,5 +65,5 @@ module.exports = {
         } catch (e) {
             throw e;
         }
-	}
+    }
 };

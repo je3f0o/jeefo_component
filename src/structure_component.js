@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : structure_component.js
 * Created at  : 2019-06-26
-* Updated at  : 2019-08-23
+* Updated at  : 2019-09-13
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -31,6 +31,11 @@ const id_generator = (function* () {
 
 const MARKER = "jeefo-component-id";
 
+/*
+const AsyncFunction = (async () => {}).constructor;
+const is_async = fn => fn.constructor === AsyncFunction;
+*/
+
 class StructureComponent extends BaseComponent {
     static get MARKER () { return MARKER; }
 
@@ -48,7 +53,7 @@ class StructureComponent extends BaseComponent {
         this.is_self_required = component_definition.is_self_required;
     }
 
-    init () {
+    async init () {
         if (this.is_initialized) { return; }
 
         let DOM_element;
@@ -69,11 +74,13 @@ class StructureComponent extends BaseComponent {
                 });
                 const self = this.is_self_required ? this : undefined;
 
-                controller.on_init($element, self);
+                await controller.on_init($element, self);
             }
         }
 
-        this.directives.forEach(directive => directive.init(this));
+        for (let directive of this.directives) {
+            await directive.init(this);
+        }
 
         if (DOM_element) {
             const attrs = DOM_element.attributes;
@@ -117,10 +124,16 @@ class StructureComponent extends BaseComponent {
         }
     }
 
-    digest () {
-        super.digest();
-        this.directives.forEach(directive => directive.digest());
-        this.children.forEach(child => child.digest());
+    async digest () {
+        if (! this.is_initialized) { return; }
+
+        await super.digest();
+        for (let directive of this.directives) {
+            await directive.digest();
+        }
+        for (let child of this.children) {
+            await child.digest();
+        }
     }
 
     trigger_renderable () {

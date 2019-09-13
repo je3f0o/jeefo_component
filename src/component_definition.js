@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : component_definition.js
 * Created at  : 2019-06-24
-* Updated at  : 2019-07-21
+* Updated at  : 2019-09-13
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -10,12 +10,13 @@
 // ignore:start
 "use strict";
 
-/* globals*/
+/* globals jeefo*/
 /* exported*/
 
 // ignore:end
 
 const dash_case            = require("@jeefo/utils/string/dash_case");
+const extend_member        = require("@jeefo/utils/class/extend_member");
 const jeefo_template       = require("@jeefo/template");
 const object_for_each      = require("@jeefo/utils/object/for_each");
 const styles               = require("./styles");
@@ -23,7 +24,6 @@ const IDefinition          = require("./i_definition");
 const TranscludeController = require("./transclude_controller");
 
 const STRING_TEMPLATE = /{{([^}]+)}}/g;
-const define_property = Object.defineProperty;
 
 class ComponentDefinition extends IDefinition {
     constructor (selectors, path) {
@@ -32,11 +32,11 @@ class ComponentDefinition extends IDefinition {
         this.transclude_controller = null;
     }
 
-    resolve () {
+    async resolve () {
         const {
             style, template, controller, controller_name,
             bindings, dependencies = {}
-        } = require(this.path);
+        } = await jeefo.require(this.path, null);
 
         if (style) {
             const selectors = this.selectors.map(s => `"${s}"`);
@@ -62,12 +62,10 @@ class ComponentDefinition extends IDefinition {
         if (controller) {
             class Controller {}
             if (typeof controller === "function") {
-                define_property(Controller.prototype, "on_init", {
-                    value : controller
-                });
+                extend_member(Controller, "on_init", controller);
             } else {
                 object_for_each(controller, (key, value) => {
-                    define_property(Controller.prototype, key, {value});
+                    extend_member(Controller, key, value);
                 });
             }
             this.Controller = Controller;

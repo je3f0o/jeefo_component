@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : base_component.js
 * Created at  : 2019-07-06
-* Updated at  : 2019-07-21
+* Updated at  : 2019-09-13
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -19,8 +19,15 @@ const Observer       = require("@jeefo/observer");
 const Interpreter    = require("./interpreter");
 const ChangeDetector = require("./change_detector");
 
-class BaseComponent {
+class IBaseComponent {
     constructor (name, definition) {
+        if (new.target === IBaseComponent) {
+            throw new Error(
+                `Abstract interface '${
+                    IBaseComponent.constructor.name
+                }' class cannot be instantiated directly.`
+            );
+        }
         this.name           = name;
         this.is_initialized = false;
 
@@ -101,14 +108,14 @@ class BaseComponent {
         this.observer.on(property, notify_handler);
     }
 
-    digest () {
+    async digest () {
         this.change_detectors.forEach(change_detector => {
             change_detector.invoke();
         });
         if (this.controller && this.controller.on_digest) {
-            this.controller.on_digest();
+            await this.controller.on_digest();
         }
     }
 }
 
-module.exports = BaseComponent;
+module.exports = IBaseComponent;

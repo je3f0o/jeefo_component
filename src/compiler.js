@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : compiler.js
 * Created at  : 2019-06-23
-* Updated at  : 2019-07-21
+* Updated at  : 2019-09-13
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -24,11 +24,11 @@ const MARKER = StructureComponent.MARKER;
 
 const single_tag_elements = ["img"];
 
-function find_structure_directive (node, parent) {
+async function find_structure_directive (node, parent) {
     let name, definition;
 
-    node.attrs.each(attr_name => {
-        const _definition = definitions_table.get_directive(attr_name);
+    for (let [attr_name] of node.attrs) {
+        const _definition = await definitions_table.get_directive(attr_name);
         if (_definition && _definition.is_structure) {
             if (definition) {
                 if (_definition.priority > definition.priority) {
@@ -40,7 +40,7 @@ function find_structure_directive (node, parent) {
                 definition = _definition;
             }
         }
-    });
+    }
 
     if (! definition) { return; }
 
@@ -59,9 +59,9 @@ const fake_definition = {
     controller_name  : null,
     is_self_required : false,
 };
-function find_component (node, parent) {
+async function find_component (node, parent) {
     let component;
-    let definition = definitions_table.get_component(node.name);
+    let definition = await definitions_table.get_component(node.name);
     if (definition) {
         component = new StructureComponent(node.name, definition, parent);
         // TODO: think about better way, maybe return jeefo template or
@@ -82,27 +82,31 @@ function find_component (node, parent) {
     }
     if (component) { return component; }
 
-    const has_directive = node.attrs.find((attr_name, value) => {
-        const definition = definitions_table.get_directive(attr_name);
-        return definition !== undefined || (value && value.includes("${"));
-    });
-
-    if (has_directive) {
-        return new StructureComponent(null, fake_definition, parent);
+    for (let [attr_name, value] of node.attrs) {
+        const definition = await definitions_table.get_directive(attr_name);
+        if (definition !== undefined || (value && value.includes("${"))) {
+            return new StructureComponent(null, fake_definition, parent);
+        }
     }
 }
 
-function resolve_template (nodes, parent_component) {
-    return nodes.map(node => {
-        let component = find_structure_directive(node, parent_component);
+async function resolve_template (nodes, parent_component) {
+    const results = [];
+
+    for (let node of nodes) {
+        let component = await find_structure_directive(node, parent_component);
         if (component) {
             parent_component.children.push(component);
-            return `<placeholder ${ component.get_marker() }></placeholder>`;
+            results.push(
+                `<placeholder ${ component.get_marker() }></placeholder>`
+            );
+            continue;
         }
 
-        let attrs = '', content = '';
+        let attrs = '';
+        let content = '';
 
-        component = find_component(node, parent_component);
+        component = await find_component(node, parent_component);
         if (component) {
             attrs += ` ${ component.get_marker() }`;
             parent_component.children.push(component);
@@ -110,7 +114,7 @@ function resolve_template (nodes, parent_component) {
 
         if (node.children.length) {
             const parent = component || parent_component;
-            content = resolve_template(node.children, parent);
+            content = await resolve_template(node.children, parent);
         } else if (node.content) {
             content = node.content;
         }
@@ -122,24 +126,28 @@ function resolve_template (nodes, parent_component) {
         if (node.class_list.length) {
             attrs += ` class="${ node.class_list.join(' ') }"`;
         }
-        node.attrs.each((name, value) => {
+        for (let [name, value] of node.attrs) {
             attrs += ` ${ name }`;
             if (value) {
                 attrs += `="${ value }"`;
             }
 
-            const definition = definitions_table.get_directive(name);
+            const definition = await definitions_table.get_directive(name);
             if (definition) {
                 const directive = new DirectiveComponent(name, definition);
                 component.directives.push(directive);
             }
-        });
+        }
 
         if (single_tag_elements.includes(node.name)) {
-            return `<${node.name}${attrs}>`;
+            results.push(`<${node.name}${attrs}>`);
+            continue;
         }
-        return `<${node.name}${attrs}>${content}</${node.name}>`;
-    }).join('');
+
+        results.push(`<${node.name}${attrs}>${content}</${node.name}>`);
+    }
+
+    return results.join('');
 }
 
 function set_elements (components, $wrapper) {
@@ -150,24 +158,24 @@ function set_elements (components, $wrapper) {
     });
 }
 
-function initialize (components, $wrapper) {
-    components.forEach(component => {
+async function initialize (components, $wrapper) {
+    for (let component of components) {
         if (! component.is_initialized) {
-            component.init();
+            await component.init();
             component.is_initialized = true;
         }
-        initialize(component.children, $wrapper);
-    });
+        await initialize(component.children, $wrapper);
+    }
 }
 
-module.exports = function compile (nodes, parent_component) {
-    const template = resolve_template(nodes, parent_component);
+async function compile (nodes, parent_component) {
+    const template = await resolve_template(nodes, parent_component);
     const $wrapper = jqlite("<div></div>");
     const $element = jqlite(template);
 
     $wrapper.append($element);
     set_elements(parent_component.children, $wrapper);
-    initialize(parent_component.children, $wrapper);
+    await initialize(parent_component.children, $wrapper);
 
     // Much faster way remove all child nodes
     // ref: https://stackoverflow.com/questions/3955229/remove-all-child-elements-of-a-dom-node-in-javascript?answertab=votes#tab-top
@@ -178,4 +186,6 @@ module.exports = function compile (nodes, parent_component) {
         wrapper.removeChild(wrapper.firstChild);
     }
     return elements;
-};
+}
+
+module.exports = compile;

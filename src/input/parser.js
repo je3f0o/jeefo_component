@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : parser.js
 * Created at  : 2017-07-25
-* Updated at  : 2019-08-08
+* Updated at  : 2019-09-10
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -14,7 +14,7 @@
 
 // ignore:end
 
-const enum_path = "@jeefo/javascript_parser/src/es5/enums/states_enum";
+const enum_path = "@jeefo/javascript_parser/src/es8/enums/states_enum";
 
 const for_each       = require("@jeefo/utils/object/for_each");
 const JeefoParser    = require("@jeefo/parser");
@@ -23,7 +23,7 @@ const tokenizer      = require("./tokenizer");
 const ast_node_table = require("./ast_node_table");
 
 const parser = new JeefoParser(
-    "Jeefo ES6 expression",
+    "Jeefo ES8 expression",
     tokenizer,
     ast_node_table
 );
@@ -33,5 +33,24 @@ for_each(states_enum, (key, value) => {
 
 const prep_path = "@jeefo/javascript_parser/src/es5/preparation_handler";
 parser.onpreparation = require(prep_path);
+
+/*
+let n = parser.parse(`
+a = 2;
+[, id, id = value, {} = {}, [] = [], [], o.p, ...rest] = [,,[]];
+({
+    id,
+    id : id,
+    id : { z = 2 },
+    id : { [prop] : id },
+    id : [, id, id = value, {} = {}, [] = [], [], o.p, ...rest],
+    id = 123
+} = {});
+
+o = { z : {}, i : [2 > {}] };
+a,b,c;
+`);
+console.log(n);
+*/
 
 module.exports = parser;
