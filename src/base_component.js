@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : base_component.js
 * Created at  : 2019-07-06
-* Updated at  : 2019-09-13
+* Updated at  : 2019-10-16
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -16,18 +16,14 @@
 // ignore:end
 
 const Observer       = require("@jeefo/observer");
+const Interface      = require("@jeefo/utils/class/interface");
 const Interpreter    = require("./interpreter");
 const ChangeDetector = require("./change_detector");
 
-class IBaseComponent {
+class IBaseComponent extends Interface {
     constructor (name, definition) {
-        if (new.target === IBaseComponent) {
-            throw new Error(
-                `Abstract interface '${
-                    IBaseComponent.constructor.name
-                }' class cannot be instantiated directly.`
-            );
-        }
+        super(IBaseComponent);
+
         this.name           = name;
         this.is_initialized = false;
 
@@ -53,8 +49,7 @@ class IBaseComponent {
     }
 
     bind (DOM_element, component) {
-        this.binders.forEach(binder => {
-            const { property, operator, attribute_name } = binder;
+        this.binders.forEach(({ property, operator, attribute_name }) => {
             if (! DOM_element.hasAttribute(attribute_name)) { return; }
             const script = DOM_element.getAttribute(attribute_name).trim();
             DOM_element.removeAttribute(attribute_name);

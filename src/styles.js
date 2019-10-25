@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : styles.js
 * Created at  : 2019-06-15
-* Updated at  : 2019-07-21
+* Updated at  : 2019-10-07
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -59,6 +59,7 @@ class Styles {
 
 		style_el.insertAdjacentHTML("afterbegin", css_rules);
 		head.appendChild(style_el);
+        return style_el;
 	}
 }
 

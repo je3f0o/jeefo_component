@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : structure_component.js
 * Created at  : 2019-06-26
-* Updated at  : 2019-09-13
+* Updated at  : 2019-10-11
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -36,6 +36,11 @@ const AsyncFunction = (async () => {}).constructor;
 const is_async = fn => fn.constructor === AsyncFunction;
 */
 
+const event_binder_template = `
+ANON_FN
+return anonymous.call(this_arg, $ctrls);
+`.trim().split('\n').map(line => line.trim()).join('\n');
+
 class StructureComponent extends BaseComponent {
     static get MARKER () { return MARKER; }
 
@@ -50,18 +55,22 @@ class StructureComponent extends BaseComponent {
         this.children         = [];
         this.directives       = [];
         this.is_attached      = false;
+        this.binding_events   = null;
         this.is_self_required = component_definition.is_self_required;
     }
 
     async init () {
         if (this.is_initialized) { return; }
 
-        let DOM_element;
         const { $element, controller, dependencies } = this;
+        let DOM_element;
         if ($element) {
-            DOM_element = $element.DOM_element;
+            ({ DOM_element } = $element);
+            DOM_element.addEventListener("digest",  () => this.digest());
+            DOM_element.addEventListener("destroy", () => this.destroy());
         }
 
+        // Step 1: initialize itself
         if (controller) {
             if (DOM_element) {
                 this.bind(DOM_element, this);
@@ -78,18 +87,20 @@ class StructureComponent extends BaseComponent {
             }
         }
 
-        for (let directive of this.directives) {
-            await directive.init(this);
-        }
-
+        // Step 2: bind attributes
         if (DOM_element) {
             const attrs = DOM_element.attributes;
             const generate_handler = name => {
                 return value => DOM_element.setAttribute(name, value);
             };
 
+            LOOP:
             for (let i = 0; i < attrs.length; ++i) {
                 const { name, value } = attrs[i];
+
+                for (const dir of this.directives) {
+                    if (dir.name === name) { continue LOOP; }
+                }
 
                 if (value.includes('${')) {
                     const script          = `\`${ attrs[i].value }\``;
@@ -100,6 +111,16 @@ class StructureComponent extends BaseComponent {
                     this.change_detectors.push(change_detector);
                 }
             }
+        }
+
+        // Step 3: bind events
+        if (this.binding_events) {
+            this.bind_events();
+        }
+
+        // Step 4: initialize directives
+        for (let directive of this.directives) {
+            await directive.init(this);
         }
     }
 
@@ -152,6 +173,37 @@ class StructureComponent extends BaseComponent {
             if (callback(parent)) { return parent; }
         }
         return null;
+    }
+
+    bind_events () {
+        const { $element, controller } = this;
+        controller.$event   = null;
+        controller.$element = $element;
+
+        const _bind_events = (event_name, interpreter) => {
+            const script = event_binder_template.replace("ANON_FN", () => {
+                return interpreter.getter.toString();
+            });
+            // jshint evil:true
+            interpreter.getter = new Function(
+                "this_arg", "$event", "$ctrls", script
+            );
+            // jshint evil:false
+            this.$element.on(event_name, function (event) { // jshint ignore:line
+                controller.$event = event;
+                return interpreter.getter(this, event, interpreter.ctrls);
+            });
+        };
+
+        for (const [event_name, expression] of this.binding_events) {
+            try {
+                const interpreter = new Interpreter(expression, this);
+                _bind_events(event_name, interpreter);
+            } catch (e) {
+                console.error(e);
+                debugger
+            }
+        }
     }
 }
 

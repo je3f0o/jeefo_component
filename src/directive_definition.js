@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : directive_definition.js
 * Created at  : 2017-08-07
-* Updated at  : 2019-09-13
+* Updated at  : 2019-10-16
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -23,6 +23,8 @@ const IDefinition   = require("./i_definition");
 
 const CAPTURE_DEPENDENCY_REGEX = /^(\^+)?(.+)$/;
 
+const is_class = value => value.toString().startsWith("class");
+
 class DirectiveDefinition extends IDefinition {
     constructor (selectors, path) {
         super(selectors, path);
@@ -34,7 +36,7 @@ class DirectiveDefinition extends IDefinition {
         const {
             type, priority, style, controller, controller_name,
             bindings, dependencies = {}
-        } = await jeefo.require(this.path, null);
+        } = await jeefo.require(this.path);
 
         if (priority) { this.priority = priority; }
         if (type) {
@@ -55,15 +57,23 @@ class DirectiveDefinition extends IDefinition {
 
         // Conroller
         if (controller) {
-            class Controller {}
+            let Ctrl;
             if (typeof controller === "function") {
-                extend_member(Controller, "on_init", controller);
+                if (is_class(controller)) {
+                    Ctrl = controller;
+                } else {
+                    class Controller {}
+                    extend_member(Controller, "on_init", controller);
+                    Ctrl = Controller;
+                }
             } else {
+                class Controller {}
                 for_each(controller, (key, value) => {
                     extend_member(Controller, key, value);
                 });
+                Ctrl = Controller;
             }
-            this.Controller = Controller;
+            this.Controller = Ctrl;
             if (controller_name) {
                 this.controller_name = controller_name;
             }

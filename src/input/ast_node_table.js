@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : ast_node_table.js
 * Created at  : 2017-09-18
-* Updated at  : 2019-09-10
+* Updated at  : 2019-10-11
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -40,16 +40,14 @@ const nodes = [
     // 11.7 - Punctuators
     "es8/terminals/punctuator",
 
-    // 12.1 - Identifiers
-    "es5/expressions/identifier_name",
-    "es8/expressions/label_identifier",
-    "es8/expressions/binding_identifier",
-    "es8/expressions/identifier_reference",
-
     // --------------------------
     // 12.2 - Primary expressions
     // --------------------------
     "es8/expressions/primary_expression",
+    // 12.1 - Identifiers
+    "es5/expressions/identifier_name",
+    "es8/expressions/binding_identifier",
+    "es8/expressions/identifier_reference",
     // 12.2.4 - Literals
     "es8/literals/literal",
     "es8/literals/string_literal",
@@ -125,5 +123,12 @@ for (let path of nodes) {
     }
     ast_node_table.register_node_definition(def);
 }
+
+const _this = require(`${ proj_dir }/es8/expressions/this_keyword`);
+ast_node_table.register_reserved_word("this", _this);
+const _null = require(`${ proj_dir }/es8/literals/null_literal`);
+ast_node_table.register_reserved_word("null", _null);
+const bool = require(`${ proj_dir }/es8/literals/boolean_literal`);
+ast_node_table.register_reserved_words(["true", "false"], bool);
 
 module.exports = ast_node_table;

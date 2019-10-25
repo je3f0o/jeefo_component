@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : interpreter.js
 * Created at  : 2019-06-30
-* Updated at  : 2019-09-09
+* Updated at  : 2019-10-11
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -22,21 +22,30 @@ const no_operation = () => {};
 function find_controller (property, controllers, component) {
     let script = null;
 
+    const _find_controller = ({ id, controller, controller_name }) => {
+        let ctrl_name;
+        if (property === controller_name) {
+            script    = `$ctrls.${ property }`;
+            ctrl_name = property;
+        } else if (property in controller) {
+            ctrl_name = `ctrl_${ id }`;
+            script    = `$ctrls.${ ctrl_name }.${ property }`;
+        }
+
+        if (ctrl_name) {
+            controllers[ctrl_name] = controller;
+        }
+    };
+
+    if (component.controller) {
+        _find_controller(component);
+    }
+
     component.find_parent(parent => {
         if (parent.controller) {
-            let ctrl_name;
-            if (property === parent.controller_name) {
-                script    = `$ctrls.${ property }`;
-                ctrl_name = property;
-            } else if (property in parent.controller) {
-                ctrl_name = `ctrl_${ parent.id }`;
-                script    = `$ctrls.${ ctrl_name }.${ property }`;
-            }
+            _find_controller(parent);
 
-            if (ctrl_name) {
-                controllers[ctrl_name] = parent.controller;
-                return true;
-            }
+            if (script) { return true; }
         }
     });
 
@@ -45,12 +54,16 @@ function find_controller (property, controllers, component) {
 
 function compile (node, controllers, component) {
 	switch (node.id) {
+		case "This keyword"    :
 		case "Null literal"    :
 		case "Boolean literal" :
 		case "Numeric literal" :
+		case "Identifier name" :
 			return node.value;
 		case "Literal" :
+		case "Property name" :
 		case "New expression" :
+		case "Call expression" :
 		case "Member expression" :
 		case "Primary expression" :
 		case "Assignment expression" :
@@ -63,25 +76,37 @@ function compile (node, controllers, component) {
             const script = find_controller(
                 node.value, controllers, component
             );
-            return script || "undefined";
+            if (! script) {
+                throw new ReferenceError(
+                    `Identifier '${ node.value }' is not found`
+                );
+            }
+            return script || node.value;
 		case "Array literal" :
-            const elements = node.elements.expressions.map(e => {
+            const elements = node.element_list.map(e => {
                 return compile(e, controllers, component);
             });
 			return `[${ elements.join(", ") }]`;
 		case "Object literal" :
-            const properties = node.members.map(m => {
-                const prop  = compile(m.property, controllers, component);
-                const value = compile(m.initializer, controllers, component);
-                return `${ prop } : ${ value }`;
+            const properties = node.property_definition_list.map(p => {
+                return compile(p.expression, controllers, component);
             });
 			return `{ ${ properties.join(", ") } }`;
-		case "Property name" :
-            debugger
-            if (node.token.id === "String") {
-                return `"${ node.token.value }"`;
-            }
-            return node.value;
+		case "Property assignment" :
+            const prop  = compile(node.property_name, controllers, component);
+            const value = compile(node.expression, controllers, component);
+            return `${ prop } : ${ value }`;
+		case "Logical not operator" :
+            return `! ${ compile(node.expression, controllers, component) }`;
+		case "Conditional operator" :
+            const falsy = compile(
+                node.falsy_expression, controllers, component
+            );
+            const truthy = compile(
+                node.truthy_expression, controllers, component
+            );
+            const condition = compile(node.condition, controllers, component);
+            return `${ condition } ? ${ truthy } : ${ falsy }`;
 		case "Member operator" : {
             const object = compile(node.object, controllers, component);
 			return `${ object }.${ node.property.value }`;
@@ -101,10 +126,9 @@ function compile (node, controllers, component) {
             const op    = node.operator.value;
             return `${ left } ${ op } ${ right }`;
 		case "Function call expression" :
-            debugger
             const callee = compile(
                 node.callee, controllers, component);
-            const args = node.arguments_list.map(arg => {
+            const args = node.arguments.list.map(arg => {
                 return compile(arg, controllers, component);
             });
             return `${ callee }(${ args.join(", ") })`;
@@ -167,13 +191,13 @@ const build_setter = (stmt, controllers, component) => {
 };
 
 const build_fn_body = (statements) => {
-    const indent = ' '.repeat(8);
+    const indent = ' '.repeat(4);
     const body   = statements.map(stmt => `${ indent }${ stmt }`).join(";\n");
 
     return [
-        "    var result;\n    try {",
+        "    let result;",
         `${ body };`,
-        "    } finally { return result; }"
+        "    return result;"
     ].join('\n');
 };
 
@@ -182,29 +206,25 @@ class Interpreter {
         this.ctrls  = {};
         this.setter = null;
 
-        try {
-            const statements = parser.parse(source_code);
-            if (to_build_setter) {
-                this.setter = build_setter(statements, this.ctrls, component);
-            }
-
-            const compiled_stmts = statements.map(ast_node => {
-                return compile(ast_node, this.ctrls, component);
-            });
-            const last_index = compiled_stmts.length - 1;
-            const last_stmt  = compiled_stmts[last_index];
-            compiled_stmts[last_index] = `result = ${ last_stmt }`;
-
-            const code = build_fn_body(compiled_stmts);
-            /*
-            console.log(code);
-            console.log("-----------------------------");
-            debugger
-            */
-            this.getter = new Function("$ctrls", code); // jshint ignore:line
-        } catch (e) {
-            console.error("Invalid expression:", e);
+        const statements = parser.parse(source_code);
+        if (to_build_setter) {
+            this.setter = build_setter(statements, this.ctrls, component);
         }
+
+        const compiled_stmts = statements.map(ast_node => {
+            return compile(ast_node, this.ctrls, component);
+        });
+        const last_index = compiled_stmts.length - 1;
+        const last_stmt  = compiled_stmts[last_index];
+        compiled_stmts[last_index] = `result = ${ last_stmt }`;
+
+        const code = build_fn_body(compiled_stmts);
+        /*
+        console.log(code);
+        console.log("-----------------------------");
+        debugger
+        */
+        this.getter = new Function("$ctrls", code); // jshint ignore:line
     }
 
     get_value () {

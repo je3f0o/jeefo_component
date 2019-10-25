@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : i_definition.js
 * Created at  : 2019-07-05
-* Updated at  : 2019-07-21
+* Updated at  : 2019-10-02
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -36,6 +36,12 @@ class IDefinition {
             const attr_name      = value.slice(1).trim();
             const attribute_name = dash_case(attr_name) || property;
             this.binders.push({ property, operator, attribute_name });
+        });
+        Object.getOwnPropertySymbols(bindings).forEach(symbol => {
+            const value          = bindings[symbol];
+            const operator       = value.charAt(0);
+            const attribute_name = dash_case(value.slice(1).trim());
+            this.binders.push({ property:symbol, operator, attribute_name });
         });
     }
 

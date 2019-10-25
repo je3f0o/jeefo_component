@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : compiler.js
 * Created at  : 2019-06-23
-* Updated at  : 2019-09-13
+* Updated at  : 2019-10-09
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -20,14 +20,15 @@ const definitions_table  = require("./definitions_table");
 const StructureComponent = require("./structure_component");
 const DirectiveComponent = require("./directive_component");
 
-const MARKER = StructureComponent.MARKER;
+const { MARKER } = StructureComponent;
 
 const single_tag_elements = ["img"];
 
+// Higher order structure diretive like: forEach="item in items"
 async function find_structure_directive (node, parent) {
     let name, definition;
 
-    for (let [attr_name] of node.attrs) {
+    for (const [attr_name] of node.attrs) {
         const _definition = await definitions_table.get_directive(attr_name);
         if (_definition && _definition.is_structure) {
             if (definition) {
@@ -60,7 +61,7 @@ const fake_definition = {
     is_self_required : false,
 };
 async function find_component (node, parent) {
-    let component;
+    let component = null;
     let definition = await definitions_table.get_component(node.name);
     if (definition) {
         component = new StructureComponent(node.name, definition, parent);
@@ -73,6 +74,7 @@ async function find_component (node, parent) {
         }
     }
 
+    // Content binding
     if (node.children.length === 0 &&
         node.content && node.content.includes("${")) {
         if (! node.attrs.has("jf-bind")) {
@@ -80,25 +82,39 @@ async function find_component (node, parent) {
         }
         node.content = null;
     }
-    if (component) { return component; }
 
-    for (let [attr_name, value] of node.attrs) {
-        const definition = await definitions_table.get_directive(attr_name);
-        if (definition !== undefined || (value && value.includes("${"))) {
-            return new StructureComponent(null, fake_definition, parent);
+    if (! component) {
+        // Attribute binding or has directive
+        for (const [attr_name, value] of node.attrs) {
+            const def = await definitions_table.get_directive(attr_name);
+            if (def || (value && value.includes("${"))) {
+                component =  new StructureComponent(
+                    null, fake_definition, parent
+                );
+                break;
+            }
         }
     }
+
+    if (node.events.length) {
+        if (! component) {
+            component = new StructureComponent(null, fake_definition, parent);
+        }
+        component.binding_events = node.events;
+    }
+    return component;
 }
 
 async function resolve_template (nodes, parent_component) {
     const results = [];
 
-    for (let node of nodes) {
+    for (const node of nodes) {
+        // Structure directive is higher order
         let component = await find_structure_directive(node, parent_component);
         if (component) {
             parent_component.children.push(component);
             results.push(
-                `<placeholder ${ component.get_marker() }></placeholder>`
+                `<${node.name} ${ component.get_marker() }></${node.name}>`
             );
             continue;
         }
@@ -126,7 +142,7 @@ async function resolve_template (nodes, parent_component) {
         if (node.class_list.length) {
             attrs += ` class="${ node.class_list.join(' ') }"`;
         }
-        for (let [name, value] of node.attrs) {
+        for (const [name, value] of node.attrs) {
             attrs += ` ${ name }`;
             if (value) {
                 attrs += `="${ value }"`;
@@ -141,10 +157,9 @@ async function resolve_template (nodes, parent_component) {
 
         if (single_tag_elements.includes(node.name)) {
             results.push(`<${node.name}${attrs}>`);
-            continue;
+        } else {
+            results.push(`<${node.name}${attrs}>${content}</${node.name}>`);
         }
-
-        results.push(`<${node.name}${attrs}>${content}</${node.name}>`);
     }
 
     return results.join('');
@@ -152,14 +167,16 @@ async function resolve_template (nodes, parent_component) {
 
 function set_elements (components, $wrapper) {
     components.forEach(component => {
-        component.$element = $wrapper.first(component.selector);
-        component.$element.DOM_element.removeAttribute(MARKER);
+        if (! component.is_initialized) {
+            component.$element = $wrapper.first(component.selector);
+            component.$element.DOM_element.removeAttribute(MARKER);
+        }
         set_elements(component.children, $wrapper);
     });
 }
 
 async function initialize (components, $wrapper) {
-    for (let component of components) {
+    for (const component of components) {
         if (! component.is_initialized) {
             await component.init();
             component.is_initialized = true;

@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : component_definition.js
 * Created at  : 2019-06-24
-* Updated at  : 2019-09-13
+* Updated at  : 2019-09-17
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -25,6 +25,8 @@ const TranscludeController = require("./transclude_controller");
 
 const STRING_TEMPLATE = /{{([^}]+)}}/g;
 
+const is_class = value => value.toString().startsWith("class");
+
 class ComponentDefinition extends IDefinition {
     constructor (selectors, path) {
         super(selectors, path);
@@ -36,7 +38,7 @@ class ComponentDefinition extends IDefinition {
         const {
             style, template, controller, controller_name,
             bindings, dependencies = {}
-        } = await jeefo.require(this.path, null);
+        } = await jeefo.require(this.path);
 
         if (style) {
             const selectors = this.selectors.map(s => `"${s}"`);
@@ -60,15 +62,23 @@ class ComponentDefinition extends IDefinition {
 
         // Conroller
         if (controller) {
-            class Controller {}
+            let Ctrl;
             if (typeof controller === "function") {
-                extend_member(Controller, "on_init", controller);
+                if (is_class(controller)) {
+                    Ctrl = controller;
+                } else {
+                    class Controller {}
+                    extend_member(Controller, "on_init", controller);
+                    Ctrl = Controller;
+                }
             } else {
+                class Controller {}
                 object_for_each(controller, (key, value) => {
                     extend_member(Controller, key, value);
                 });
+                Ctrl = Controller;
             }
-            this.Controller = Controller;
+            this.Controller = Ctrl;
             if (controller_name) {
                 this.controller_name = controller_name;
             }
@@ -77,6 +87,10 @@ class ComponentDefinition extends IDefinition {
         this.dependencies = Object.keys(dependencies).map(property => {
             const name = dash_case(dependencies[property]);
             return { property, name };
+        });
+        Object.getOwnPropertySymbols(dependencies).forEach(symbol => {
+            const name = dash_case(dependencies[symbol]);
+            this.dependencies.push({ property : symbol, name });
         });
 
         this.set_binders(bindings);
