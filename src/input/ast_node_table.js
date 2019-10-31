@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : ast_node_table.js
 * Created at  : 2017-09-18
-* Updated at  : 2019-10-11
+* Updated at  : 2019-10-31
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -18,7 +18,7 @@ const { AST_Node_Table } = require("@jeefo/parser");
 
 const ast_node_table = new AST_Node_Table();
 
-const proj_dir = "@jeefo/javascript_parser/src";
+const proj_dir = "@jeefo/ecma_parser";
 
 const initialize = node => {
     throw new Error(`'${ node.id }' cannot be initialized`);

@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : parser.js
 * Created at  : 2017-07-25
-* Updated at  : 2019-09-10
+* Updated at  : 2019-10-31
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -14,7 +14,7 @@
 
 // ignore:end
 
-const enum_path = "@jeefo/javascript_parser/src/es8/enums/states_enum";
+const enum_path = "@jeefo/ecma_parser/es8/enums/states_enum";
 
 const for_each       = require("@jeefo/utils/object/for_each");
 const JeefoParser    = require("@jeefo/parser");
@@ -31,7 +31,7 @@ for_each(states_enum, (key, value) => {
     parser.state.add(key, value, key === "statement");
 });
 
-const prep_path = "@jeefo/javascript_parser/src/es5/preparation_handler";
+const prep_path = "@jeefo/ecma_parser/es5/preparation_handler";
 parser.onpreparation = require(prep_path);
 
 /*
