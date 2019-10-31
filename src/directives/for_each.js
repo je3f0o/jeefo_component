@@ -69,6 +69,17 @@ async function sync_children (instance) {
         }
     }
 
+    const destroy = (from) => {
+        for (let i = children.length - 1; i >= from; i -= 1) {
+            const index = values.indexOf(children[i].value, from);
+            if (index === -1) {
+                children[i].destroy();
+            }
+        }
+    };
+
+    destroy(0);
+
     LOOP:
     while (! is_synced()) {
         for (let [i, value] of values.entries()) {
@@ -85,6 +96,7 @@ async function sync_children (instance) {
 
             const new_child = await create_new_child(value, i, component);
             children.splice(i, 0, new_child);
+            destroy(i + 1);
             continue LOOP;
         }
     }

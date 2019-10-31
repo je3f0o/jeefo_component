@@ -1,2 +1,1 @@
-# jeefo_component
-Part of jeefo framework
+@jeefo/component part of jeefo framework.
