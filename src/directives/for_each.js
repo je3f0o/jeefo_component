@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : for_each.js
 * Created at  : 2017-07-25
-* Updated at  : 2019-10-26
+* Updated at  : 2019-11-02
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -21,7 +21,9 @@ const compile            = require("../compiler");
 const Interpreter        = require("../interpreter");
 const StructureComponent = require("../structure_component");
 
+const comp_prop   = Symbol("component");
 const values_prop = Symbol("values");
+
 const definition  = {
     binders          : [],
     dependencies     : [],
@@ -29,6 +31,9 @@ const definition  = {
     controller_name  : null,
     is_self_required : false,
 };
+
+const DOCUMENT_FRAGMENT_NODE = 11;
+const is_fragment = element => element.nodeType === DOCUMENT_FRAGMENT_NODE;
 
 async function create_new_child (value, index, component) {
     const { variable_name, index_name } = component;
@@ -52,7 +57,7 @@ async function create_new_child (value, index, component) {
 
 async function sync_children (instance) {
     const values       = instance[values_prop];
-    const component    = instance["(component)"];
+    const component    = instance[comp_prop];
     const { children } = component;
 
     const is_synced = () => {
@@ -108,7 +113,7 @@ module.exports = {
     priority : 1000,
     controller : {
         async on_init ($element, component) {
-            this["(component)"] = component;
+            this[comp_prop] = component;
 
             try {
                 const symbols  = parser.parse(component.expression);
@@ -133,10 +138,8 @@ module.exports = {
                 }
                 component.index_name = "$index";
 
-                const comment      = ` For each: ${ component.expression } `;
-                const comment_node = jqlite(document.createComment(comment));
-                this["(comment)"] = comment_node;
-                $element.replace(comment_node);
+                const comment = ` For each: ${ component.expression } `;
+                $element.replace(document.createComment(comment));
 
                 await this.on_digest();
             } catch (e) {
@@ -145,8 +148,9 @@ module.exports = {
         },
 
         async on_digest () {
-            const component = this["(component)"];
+            const component = this[comp_prop];
             const {
+                $element : $comment,
                 children,
                 index_name,
                 interpreter,
@@ -156,10 +160,15 @@ module.exports = {
 
             await sync_children(this);
 
+            if ($comment.DOM_element.parentNode === null) {
+                const frag = document.createDocumentFragment();
+                frag.appendChild($comment.DOM_element);
+            }
+
             children.forEach((child, index) => {
                 if (! child.is_attached || child.index !== index) {
                     if (index === 0) {
-                        this["(comment)"].after(child.$element);
+                        $comment.after(child.$element);
                     } else {
                         const prev = component.children[index - 1];
                         prev.$element.after(child.$element);
