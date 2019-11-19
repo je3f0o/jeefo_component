@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : structure_component.js
 * Created at  : 2019-06-26
-* Updated at  : 2019-10-11
+* Updated at  : 2019-11-19
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -122,6 +122,8 @@ class StructureComponent extends BaseComponent {
         for (let directive of this.directives) {
             await directive.init(this);
         }
+
+        this.is_initialized = true;
     }
 
     destroy (is_nested) {

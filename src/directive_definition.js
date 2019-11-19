@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : directive_definition.js
 * Created at  : 2017-08-07
-* Updated at  : 2019-10-16
+* Updated at  : 2019-11-16
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -28,8 +28,7 @@ const is_class = value => value.toString().startsWith("class");
 class DirectiveDefinition extends IDefinition {
     constructor (selectors, path) {
         super(selectors, path);
-        this.priority     = 0;
-        this.is_structure = false;
+        this.priority = 0;
     }
 
     async resolve () {

@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : component_definition.js
 * Created at  : 2019-06-24
-* Updated at  : 2019-09-17
+* Updated at  : 2019-11-16
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -36,10 +36,21 @@ class ComponentDefinition extends IDefinition {
 
     async resolve () {
         const {
-            style, template, controller, controller_name,
+            type, style, template, controller, controller_name,
             bindings, dependencies = {}
         } = await jeefo.require(this.path);
 
+        // Type
+        if (type) {
+            if (type.toLowerCase() === "structure") {
+                this.is_structure     = true;
+                this.is_self_required = true;
+            } else {
+                throw new SyntaxError("Invalid definition type");
+            }
+        }
+
+        // Style
         if (style) {
             const selectors = this.selectors.map(s => `"${s}"`);
             styles.add_style(style, {

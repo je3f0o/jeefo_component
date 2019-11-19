@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : compiler.js
 * Created at  : 2019-06-23
-* Updated at  : 2019-10-09
+* Updated at  : 2019-11-19
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -179,18 +179,24 @@ async function initialize (components, $wrapper) {
     for (const component of components) {
         if (! component.is_initialized) {
             await component.init();
-            component.is_initialized = true;
+            await initialize(component.children, $wrapper);
         }
-        await initialize(component.children, $wrapper);
     }
 }
 
 async function compile (nodes, parent_component) {
-    const template = await resolve_template(nodes, parent_component);
-    const $wrapper = jqlite("<div></div>");
-    const $element = jqlite(template);
+    const template  = await resolve_template(nodes, parent_component);
+    const $wrapper  = jqlite("<div></div>");
+    const $elements = jqlite(template);
 
-    $wrapper.append($element);
+    if ($elements.DOM_element) {
+        $wrapper.append($elements);
+    } else {
+        for (let i = 0; i < $elements.length; i+= 1) {
+            $wrapper.append($elements[i]);
+        }
+    }
+
     set_elements(parent_component.children, $wrapper);
     await initialize(parent_component.children, $wrapper);
 

@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : i_definition.js
 * Created at  : 2019-07-05
-* Updated at  : 2019-10-02
+* Updated at  : 2019-11-16
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -27,6 +27,7 @@ class IDefinition {
         this.dependencies     = null;
         this.Controller       = null;
         this.controller_name  = null;
+        this.is_structure     = false;
         this.is_self_required = false;
     }
 
