@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : interpreter.js
 * Created at  : 2019-06-30
-* Updated at  : 2019-10-11
+* Updated at  : 2019-11-29
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -120,11 +120,17 @@ function compile (node, controllers, component) {
             return `${ object }[${ expression }]`;
         }
 		case "Arithmetic operator" :
-		case "Assignment operator" :
+		case "Assignment operator" : {
             const left  = compile(node.left , controllers, component);
             const right = compile(node.right, controllers, component);
             const op    = node.operator.value;
             return `${ left } ${ op } ${ right }`;
+        }
+		case "Equality operator" : {
+            const left  = compile(node.left , controllers, component);
+            const right = compile(node.right, controllers, component);
+            return `${ left } === ${ right }`;
+        }
 		case "Function call expression" :
             const callee = compile(
                 node.callee, controllers, component);

@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : for_each.js
 * Created at  : 2017-07-25
-* Updated at  : 2019-11-02
+* Updated at  : 2019-11-29
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -27,27 +27,17 @@ const values_prop = Symbol("values");
 const definition  = {
     binders          : [],
     dependencies     : [],
-    Controller       : class Controller {},
+    Controller       : class ForEachDirectiveController {},
     controller_name  : null,
     is_self_required : false,
 };
 
-const DOCUMENT_FRAGMENT_NODE = 11;
-const is_fragment = element => element.nodeType === DOCUMENT_FRAGMENT_NODE;
-
 async function create_new_child (value, index, component) {
     const { variable_name, index_name } = component;
-    class ForEachDirectiveController {
-        constructor () {
-            this[index_name]    = index;
-            this[variable_name] = value;
-        }
-    }
-    definition.Controller = ForEachDirectiveController;
     const new_child = new StructureComponent(null, definition, component);
 
-    new_child.value = value;
-    new_child.index = index;
+    new_child.index = new_child.controller[index_name]    = index;
+    new_child.value = new_child.controller[variable_name] = value;
 
     const elements = await compile([component.node.clone(true)], new_child);
     new_child.$element = jqlite(elements[0]);
@@ -178,17 +168,7 @@ module.exports = {
                     child.controller[index_name] = index;
 
                     if (is_attached && ! child.is_attached) {
-                        child.children.forEach(child => {
-                            child.trigger_renderable();
-                        });
-                        child.is_attached = true;
-                        /*
-                        if (child.$element.name === "OPTION") {
-                            child.$element.trigger("option_added", {
-                                bubbles : true
-                            });
-                        }
-                        */
+                        child.trigger_renderable();
                     }
                 }
             });
