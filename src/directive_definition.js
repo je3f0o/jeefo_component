@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : directive_definition.js
 * Created at  : 2017-08-07
-* Updated at  : 2019-11-16
+* Updated at  : 2019-12-29
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -16,12 +16,9 @@
 // ignore:end
 
 const for_each      = require("@jeefo/utils/object/for_each");
-const dash_case     = require("@jeefo/utils/string/dash_case");
 const extend_member = require("@jeefo/utils/class/extend_member");
 const styles        = require("./styles");
 const IDefinition   = require("./i_definition");
-
-const CAPTURE_DEPENDENCY_REGEX = /^(\^+)?(.+)$/;
 
 const is_class = value => value.toString().startsWith("class");
 
@@ -78,17 +75,8 @@ class DirectiveDefinition extends IDefinition {
             }
         }
 
-        // Dependencies
-        this.dependencies = Object.keys(dependencies).map(property => {
-            const dependency = dependencies[property];
-            const matches    = dependency.match(CAPTURE_DEPENDENCY_REGEX);
-            const name       = dash_case(matches[2]);
-            const direction  = matches[1] || null;
-            return { property, name, direction };
-        });
-
-        // Bindings
-        this.set_binders(bindings);
+        super.set_binders(bindings);
+        super.set_dependencies(dependencies);
         this.is_resolved = true;
     }
 }

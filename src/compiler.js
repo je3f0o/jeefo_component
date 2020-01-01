@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : compiler.js
 * Created at  : 2019-06-23
-* Updated at  : 2019-11-19
+* Updated at  : 2019-12-07
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -65,6 +65,10 @@ async function find_component (node, parent) {
     let definition = await definitions_table.get_component(node.name);
     if (definition) {
         component = new StructureComponent(node.name, definition, parent);
+        if (definition.is_structure) {
+            component.node = node;
+            return component;
+        }
         // TODO: think about better way, maybe return jeefo template or
         // something...
         if (definition.template_handler) {
@@ -126,6 +130,13 @@ async function resolve_template (nodes, parent_component) {
         if (component) {
             attrs += ` ${ component.get_marker() }`;
             parent_component.children.push(component);
+
+            if (component.is_self_required) {
+                results.push(
+                    `<${node.name}${attrs}></${node.name}>`
+                );
+                continue;
+            }
         }
 
         if (node.children.length) {
@@ -175,16 +186,7 @@ function set_elements (components, $wrapper) {
     });
 }
 
-async function initialize (components, $wrapper) {
-    for (const component of components) {
-        if (! component.is_initialized) {
-            await component.init();
-            await initialize(component.children, $wrapper);
-        }
-    }
-}
-
-async function compile (nodes, parent_component) {
+async function compile (nodes, parent_component, to_initialize = true) {
     const template  = await resolve_template(nodes, parent_component);
     const $wrapper  = jqlite("<div></div>");
     const $elements = jqlite(template);
@@ -198,7 +200,13 @@ async function compile (nodes, parent_component) {
     }
 
     set_elements(parent_component.children, $wrapper);
-    await initialize(parent_component.children, $wrapper);
+    if (to_initialize) {
+        for (const component of parent_component.children) {
+            if (! component.is_initialized) {
+                await component.init();
+            }
+        }
+    }
 
     // Much faster way remove all child nodes
     // ref: https://stackoverflow.com/questions/3955229/remove-all-child-elements-of-a-dom-node-in-javascript?answertab=votes#tab-top

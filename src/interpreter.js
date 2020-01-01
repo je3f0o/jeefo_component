@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : interpreter.js
 * Created at  : 2019-06-30
-* Updated at  : 2019-11-29
+* Updated at  : 2019-12-29
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -19,37 +19,46 @@ const parser = require("./input/parser");
 
 const no_operation = () => {};
 
-function find_controller (property, controllers, component) {
-    let script = null;
+function find_controller (property, controllers, input_component) {
+    const build_script = ({ id, controller }) => {
+        const ctrl_name = `ctrl_${ id }`;
+        controllers[ctrl_name] = controller;
+        return `$ctrls.${ ctrl_name }.${ property }`;
+    };
 
-    const _find_controller = ({ id, controller, controller_name }) => {
-        let ctrl_name;
-        if (property === controller_name) {
-            script    = `$ctrls.${ property }`;
-            ctrl_name = property;
-        } else if (property in controller) {
-            ctrl_name = `ctrl_${ id }`;
-            script    = `$ctrls.${ ctrl_name }.${ property }`;
+    const is_matched = ({ controller, controller_name }) => {
+        return (
+            property === controller_name ||
+            (controller && property in controller)
+        );
+    };
+
+    const _find_controller = component => {
+        if (is_matched(component)) {
+            return build_script(component);
         }
 
-        if (ctrl_name) {
-            controllers[ctrl_name] = controller;
+        const directive = component.directives.find(is_matched);
+        if (directive) {
+            return build_script(directive);
         }
     };
 
-    if (component.controller) {
-        _find_controller(component);
+    const script = _find_controller(input_component);
+    if (script) { return script; }
+
+    for (let p = input_component.parent; p; p = p.parent) {
+        const script = _find_controller(p);
+        if (script) { return script; }
     }
 
-    component.find_parent(parent => {
-        if (parent.controller) {
-            _find_controller(parent);
-
-            if (script) { return true; }
-        }
-    });
-
-    return script;
+    // global
+    if (window[property]) {
+        return build_script({
+            id         : "global",
+            controller : window
+        });
+    }
 }
 
 function compile (node, controllers, component) {
@@ -98,6 +107,11 @@ function compile (node, controllers, component) {
             return `${ prop } : ${ value }`;
 		case "Logical not operator" :
             return `! ${ compile(node.expression, controllers, component) }`;
+		case "Logical or operator" :
+		case "Logical and operator" :
+            const left  = compile(node.left, controllers, component);
+            const right = compile(node.right, controllers, component);
+            return `${ left } ${ node.operator.value } ${ right }`;
 		case "Conditional operator" :
             const falsy = compile(
                 node.falsy_expression, controllers, component

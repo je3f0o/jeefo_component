@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : base_component.js
 * Created at  : 2019-07-06
-* Updated at  : 2019-10-16
+* Updated at  : 2019-12-29
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -48,6 +48,34 @@ class IBaseComponent extends Interface {
         throw new Error("Derived class must be implement `init()` method.");
     }
 
+    set_dependencies (component) {
+        const { controller, dependencies } = this;
+
+        dependencies.forEach(d => {
+            let dependency;
+
+            LOOP:
+            for (let p = component.parent; p; p = p.parent) {
+                if (p.name === d.name) {
+                    dependency = p;
+                    break;
+                }
+                for (let d2 of p.directives) {
+                    if (d.name === d2.name) {
+                        dependency = d2;
+                        break LOOP;
+                    }
+                }
+            }
+
+            if (dependency) {
+                controller[d.property] = dependency.controller;
+            } else if (! d.is_optional) {
+                throw new Error("Dependency not found");
+            }
+        });
+    }
+
     bind (DOM_element, component) {
         this.binders.forEach(({ property, operator, attribute_name }) => {
             if (! DOM_element.hasAttribute(attribute_name)) { return; }
@@ -89,7 +117,7 @@ class IBaseComponent extends Interface {
             });
             if (interpreter.setter) {
                 this.observe(property, new_value => {
-                    interpreter.set_value.bind(new_value);
+                    interpreter.set_value(new_value);
                 });
             }
             this.change_detectors.push(change_detector);

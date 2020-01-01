@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : component_definition.js
 * Created at  : 2019-06-24
-* Updated at  : 2019-11-16
+* Updated at  : 2019-12-29
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -15,7 +15,6 @@
 
 // ignore:end
 
-const dash_case            = require("@jeefo/utils/string/dash_case");
 const extend_member        = require("@jeefo/utils/class/extend_member");
 const jeefo_template       = require("@jeefo/template");
 const object_for_each      = require("@jeefo/utils/object/for_each");
@@ -95,16 +94,8 @@ class ComponentDefinition extends IDefinition {
             }
         }
 
-        this.dependencies = Object.keys(dependencies).map(property => {
-            const name = dash_case(dependencies[property]);
-            return { property, name };
-        });
-        Object.getOwnPropertySymbols(dependencies).forEach(symbol => {
-            const name = dash_case(dependencies[symbol]);
-            this.dependencies.push({ property : symbol, name });
-        });
-
-        this.set_binders(bindings);
+        super.set_binders(bindings);
+        super.set_dependencies(dependencies);
         this.is_resolved = true;
     }
 

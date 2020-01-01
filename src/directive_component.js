@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : directive_component.js
 * Created at  : 2019-07-06
-* Updated at  : 2019-09-13
+* Updated at  : 2019-12-29
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -25,17 +25,14 @@ class DirectiveComponent extends BaseComponent {
     async init (component) {
         if (this.is_initialized) { return; }
 
-        const { controller, dependencies } = this;
+        const { controller } = this;
         if (! controller) { return; }
 
         this.bind(component.$element.DOM_element, component);
         component.$element.DOM_element.removeAttribute(this.name);
 
         if (controller.on_init) {
-            dependencies.forEach(d => {
-                let dependency = this.find_parent(c => c.name === d.name);
-                controller[d.property] = dependency.controller;
-            });
+            super.set_dependencies(component);
 
             await controller.on_init(component.$element);
         }

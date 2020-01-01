@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : if.js
 * Created at  : 2017-09-17
-* Updated at  : 2019-11-29
+* Updated at  : 2019-12-03
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -31,14 +31,21 @@ const definition  = {
 
 const compile_component = async (component, $comment) => {
     const child = new StructureComponent(null, definition, component);
+    component.children.push(child);
 
-    const elements = await compile([component.node.clone(true)], child);
+    const elements = await compile([component.node.clone(true)], child, false);
     child.$element = jqlite(elements[0]);
 
-    $comment.after(child.$element);
-    component.children.push(child);
-    if (component.is_attached) {
-        child.trigger_renderable();
+    if (! child.is_destroyed) {
+        $comment.after(child.$element);
+
+        if (component.is_initialized) {
+            await child.init();
+
+            if (! child.is_destroyed && component.is_attached) {
+                child.trigger_renderable();
+            }
+        }
     }
 };
 
