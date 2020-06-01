@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : structure_component.js
 * Created at  : 2019-06-26
-* Updated at  : 2020-01-02
+* Updated at  : 2020-06-01
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -71,6 +71,7 @@ class StructureComponent extends BaseComponent {
             ({ DOM_element } = $element);
             DOM_element.addEventListener("digest",  () => this.digest());
             DOM_element.addEventListener("destroy", () => this.destroy());
+            $element.digest = () => this.digest();
         }
 
         // Step 1: initialize itself
@@ -84,6 +85,8 @@ class StructureComponent extends BaseComponent {
 
                 const self = this.is_self_required ? this : undefined;
                 await controller.on_init($element, self);
+
+                if (this.is_destroyed) { return; }
             }
         }
 
@@ -121,6 +124,7 @@ class StructureComponent extends BaseComponent {
         // Step 4: initialize directives
         for (const directive of this.directives) {
             await directive.init(this);
+            if (this.is_destroyed) { return; }
         }
 
         // Step 5: initialize child components
@@ -128,6 +132,7 @@ class StructureComponent extends BaseComponent {
             if (! child.is_destroyed) {
                 await child.init();
             }
+            if (this.is_destroyed) { return; }
         }
 
         this.is_initialized = true;
@@ -189,25 +194,24 @@ class StructureComponent extends BaseComponent {
         controller.$event   = null;
         controller.$element = $element;
 
-        const _bind_events = (event_name, interpreter) => {
-            const script = event_binder_template.replace("ANON_FN", () => {
-                return interpreter.getter.toString();
-            });
-            // jshint evil:true
-            interpreter.getter = new Function(
-                "this_arg", "$event", "$ctrls", script
-            );
-            // jshint evil:false
-            this.$element.on(event_name, function (event) { // jshint ignore:line
-                controller.$event = event;
-                return interpreter.getter(this, event, interpreter.ctrls);
-            });
+        const event_handler_factory = interpreter => function (event) {
+            controller.$event = event;
+            return interpreter.getter(this, event, interpreter.ctrls);
         };
 
         for (const [event_name, expression] of this.binding_events) {
             try {
                 const interpreter = new Interpreter(expression, this);
-                _bind_events(event_name, interpreter);
+
+                const script = event_binder_template.replace("ANON_FN", () => {
+                    return interpreter.getter.toString();
+                });
+                // jshint evil:true
+                interpreter.getter = new Function(
+                    "this_arg", "$event", "$ctrls", script
+                );
+                // jshint evil:false
+                this.$element.on(event_name, event_handler_factory(interpreter));
             } catch (e) {
                 console.error(e);
             }

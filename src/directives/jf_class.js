@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : jf_class.js
 * Created at  : 2017-07-26
-* Updated at  : 2019-09-29
+* Updated at  : 2020-05-21
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -23,11 +23,7 @@ const static_objects = {};
 const set_classes = (symbol, object) => {
     const $element = static_objects[symbol];
     for_each(object, (key, value) => {
-        if (value) {
-            $element.add_class(key);
-        } else {
-            $element.remove_class(key);
-        }
+        $element[value ? "add_class" : "remove_class"](key);
     });
 };
 

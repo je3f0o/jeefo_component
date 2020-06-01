@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : for_each.js
 * Created at  : 2017-07-25
-* Updated at  : 2019-11-29
+* Updated at  : 2020-06-01
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -64,7 +64,7 @@ async function sync_children (instance) {
         }
     }
 
-    const destroy = (from) => {
+    const destroy_from = from => {
         for (let i = children.length - 1; i >= from; i -= 1) {
             const index = values.indexOf(children[i].value, from);
             if (index === -1) {
@@ -73,8 +73,14 @@ async function sync_children (instance) {
         }
     };
 
-    destroy(0);
+    destroy_from(0);
 
+    let is_canceled = false, cancel_resolver;
+    component.cancel_syncing = () => {
+        is_canceled = true;
+        return new Promise((resolve) => cancel_resolver = resolve);
+    };
+    component.is_syncing = true;
     LOOP:
     while (! is_synced()) {
         for (let [i, value] of values.entries()) {
@@ -91,9 +97,15 @@ async function sync_children (instance) {
 
             const new_child = await create_new_child(value, i, component);
             children.splice(i, 0, new_child);
-            destroy(i + 1);
+            if (is_canceled) { break; }
+            destroy_from(i + 1);
             continue LOOP;
         }
+    }
+    component.is_syncing = false;
+    if (is_canceled) {
+        component.cancel_syncing = null;
+        cancel_resolver();
     }
 }
 
@@ -148,6 +160,11 @@ module.exports = {
             } = component;
             this[values_prop] = interpreter.get_value();
 
+            if (component.is_syncing) {
+                // TODO: Maybe i need to make a waiting list for make sure
+                // multiple digest methods not collide after canceled...
+                await component.cancel_syncing();
+            }
             await sync_children(this);
 
             if ($comment.DOM_element.parentNode === null) {
