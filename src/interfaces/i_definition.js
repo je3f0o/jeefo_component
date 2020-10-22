@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : i_definition.js
 * Created at  : 2019-07-05
-* Updated at  : 2019-12-29
+* Updated at  : 2020-10-23
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -18,6 +18,7 @@
 const for_each  = require("@jeefo/utils/object/for_each");
 const dash_case = require("@jeefo/utils/string/dash_case");
 
+const {getOwnPropertySymbols}  = Object;
 const CAPTURE_DEPENDENCY_REGEX = /^([\^\?]+)?(.+)$/;
 
 const parse_dependency = (dependency_str, property) => {
@@ -50,13 +51,12 @@ class IDefinition {
     constructor (selectors, path) {
         this.selectors        = selectors;
         this.path             = path;
-        this.is_resolved      = false;
         this.binders          = [];
         this.dependencies     = null;
         this.Controller       = null;
         this.controller_name  = null;
+        this.is_resolved      = false;
         this.is_structure     = false;
-        this.is_self_required = false;
     }
 
     set_binders (bindings = {}) {
@@ -66,7 +66,7 @@ class IDefinition {
             const attribute_name = dash_case(attr_name || property);
             this.binders.push({ property, operator, attribute_name });
         });
-        Object.getOwnPropertySymbols(bindings).forEach(symbol => {
+        getOwnPropertySymbols(bindings).forEach(symbol => {
             const value          = bindings[symbol];
             const operator       = value.charAt(0);
             const attribute_name = dash_case(value.slice(1).trim());
@@ -79,7 +79,7 @@ class IDefinition {
         for_each(dependencies, (key, value) => {
             this.dependencies.push(parse_dependency(value, key));
         });
-        Object.getOwnPropertySymbols(dependencies).forEach(symbol => {
+        getOwnPropertySymbols(dependencies).forEach(symbol => {
             const dependency_str = dependencies[symbol];
             this.dependencies.push(parse_dependency(dependency_str, symbol));
         });

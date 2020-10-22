@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : transclude_controller.js
 * Created at  : 2019-06-26
-* Updated at  : 2019-07-21
+* Updated at  : 2020-10-23
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -15,88 +15,103 @@
 
 // ignore:end
 
-const Transcluder = require("./transcluder");
+const Transcluder    = require("./transcluder");
+const JeefoDOMParser = require("@jeefo/jqlite/dom_parser");
 
-function find_transcluders (nodes, parent_indices, transclude_controller) {
-    nodes.forEach((node, index) => {
-        const parent_position = parent_indices.concat();
-        parent_position.push(index);
+class DefaultTranscluder {
+    constructor (transcluder) {
+        this.elements    = transcluder ? transcluder.elements : [];
+        this.transcluder = transcluder;
+    }
 
-        if (node.name === "jf-content") {
-            const selector_name = node.attrs.get("select") || null;
-            transclude_controller.add(selector_name, parent_position);
-        } else if (node.children.length) {
-            find_transcluders(
-                node.children, parent_position, transclude_controller
-            );
+    set_placeholder (body) {
+        this.transcluder && this.transcluder.set_placeholder(body);
+    }
+
+    transclude (parent_element) {
+        if (this.transcluder) {
+            this.transcluder.transclude(parent_element);
+        } else for (const e of this.elements) parent_element.appendChild(e);
+    }
+}
+
+const template_elems = ["JF-CONTENT", "JF-TEMPLATE"];
+
+const is_default_transcluder = ({selector_type, tag_name}) =>
+    selector_type === Node.ELEMENT_NODE && template_elems.includes(tag_name);
+
+function find_transcluders (elements, indices, instance) {
+    for (let i = 0; i < elements.length; i += 1) {
+        const element = elements[i];
+        indices.push(i);
+
+        if (template_elems.includes(element.tagName)) {
+            const transcluder = new Transcluder(element, indices);
+            if (is_default_transcluder(transcluder)) {
+                if (instance.default_transcluder) {
+                    throw new Error("Ambigious transcluder detected.");
+                }
+                instance.default_transcluder = new DefaultTranscluder(
+                    transcluder
+                );
+            } else {
+                const found = instance.transcluders.find(t => {
+                    return t.tag_name      === transcluder.tag_name &&
+                           t.selector_type === transcluder.selector_type;
+                });
+                if (found) throw new Error("Duplicated transcluder detected.");
+
+                instance.transcluders.push(transcluder);
+            }
+        } else {
+            find_transcluders(element.children, indices, instance);
         }
-    });
+        indices.pop();
+    }
 }
 
 class TranscludeController {
-    constructor (structure_nodes) {
-        this.structure_nodes        = structure_nodes;
-        this.default_transcluder    = null;
-        this.named_transcluders     = [];
-        this.named_transcluders_map = Object.create(null);
-
-        if (structure_nodes.length) {
-            find_transcluders(structure_nodes, [], this);
+    constructor (markup = '') {
+        this.dom_parser   = new JeefoDOMParser(markup);
+        this.transcluders = [];
+        if (this.dom_parser.elements.length) {
+            find_transcluders(this.dom_parser.elements, [], this);
         } else {
-            this.default_transcluder = new Transcluder(null, []);
-        }
-
-        // TODO: sort transcluders here
-    }
-
-    get (selector_name) {
-        return this.named_transcluders_map[selector_name] || null;
-    }
-
-    add (selector_name, parent_position) {
-        const transcluder = new Transcluder(selector_name, parent_position);
-
-        if (selector_name) {
-            if (this.named_transcluders_map[selector_name]) {
-                throw new Error(`Duplicated transcluder detected.`);
-            }
-            this.named_transcluders.push(transcluder);
-            this.named_transcluders_map[selector_name] = transcluder;
-        } else if (! this.default_transcluder) {
-            this.default_transcluder = transcluder;
-        } else {
-            throw new Error(`Ambigious transcluder detected.`);
+            this.default_transcluder = new DefaultTranscluder();
         }
     }
 
     // TODO: sort transcluders and transclude from behind
-    transclude (child_nodes) {
-        if (this.structure_nodes.length === 0) { return child_nodes; }
-        const nodes = this.structure_nodes.map(node => node.clone(true));
+    transclude (element) {
+        if (this.dom_parser.elements.length === 0) { return; }
+        const body = this.dom_parser.document.body.cloneNode(true);
 
-        if (child_nodes.length) {
-            child_nodes.forEach(child_node => {
-                const selector_name     = child_node.name;
-                const named_transcluder = this.get(selector_name);
-                if (named_transcluder) {
-                    named_transcluder.add_node(child_node);
-                } else if (this.default_transcluder) {
-                    this.default_transcluder.add_node(child_node);
-                } else {
-                    throw new Error("Transcluder is not found");
-                }
-            });
-
-            let i = this.named_transcluders.length;
-            while (i--) {
-                this.named_transcluders[i].transclude(nodes);
+        while (element.firstChild) {
+            const child = element.removeChild(element.firstChild);
+            let transcluder;
+            if (child.nodeType === Node.ELEMENT_NODE) {
+                transcluder = this.transcluders.find(t => {
+                    return t.tag_name === child.tagName;
+                });
             }
-            if (this.default_transcluder) {
-                this.default_transcluder.transclude(nodes);
+            if (transcluder) {
+                transcluder.elements.push(child);
+            } else if (this.default_transcluder) {
+                this.default_transcluder.elements.push(child);
+            } else {
+                throw new Error("Transcluder is not found");
             }
         }
 
-        return nodes;
+        for (const t of this.transcluders) t.set_placeholder(body);
+        if (this.default_transcluder) {
+            this.default_transcluder.set_placeholder(body);
+        }
+
+        for (const t of this.transcluders) t.transclude();
+        this.default_transcluder && this.default_transcluder.transclude();
+
+        while (body.firstChild) element.appendChild(body.firstChild);
     }
 }
 

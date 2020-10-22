@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : index.js
 * Created at  : 2017-08-08
-* Updated at  : 2019-11-29
+* Updated at  : 2020-10-23
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -25,15 +25,27 @@ const REGEX_UNDERLINE = /_/g;
     "switch",
     "jf_bind",
     "jf_class",
+    "jf_bind_html",
 ].forEach(filename => {
-    const path = `${ __dirname }/directives/${ filename }`;
+    const path     = `${__dirname}/directives/${filename}`;
     const selector = filename.replace(REGEX_UNDERLINE, '-');
     definitions_table.register_directive(selector, path);
 });
 
-const switch_placeholder_path = `${ __dirname }/directives/switch_placeholder`;
+const switch_placeholder_path = `${__dirname}/directives/switch_placeholder`;
 definitions_table.register_component(
     "switch-placeholder", switch_placeholder_path
 );
 
-module.exports = definitions_table;
+module.exports = {
+    compile             : require("./compiler"),
+    IComponent          : require("./interfaces/i_component"),
+    IRenderable         : require("./interfaces/i_renderable"),
+    IDefinition         : require("./interfaces/i_definition"),
+    Directive           : require("./components/directive"),
+    InvisibleComponent  : require("./components/invisible_component"),
+    StructureComponent  : require("./components/structure_component"),
+    RenderableComponent : require("./components/renderable_component"),
+
+    definitions_table
+};

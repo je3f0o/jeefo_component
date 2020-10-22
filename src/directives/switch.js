@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : switch.js
 * Created at  : 2019-07-12
-* Updated at  : 2020-01-02
+* Updated at  : 2020-10-23
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -15,45 +15,33 @@
 
 // ignore:end
 
-const jqlite             = require("@jeefo/jqlite");
-const Events             = require("@jeefo/template/tokens/events");
-const Attributes         = require("@jeefo/template/tokens/attributes");
-const NodeElement        = require("@jeefo/template/node_element");
-const compile            = require("../compiler");
-const Interpreter        = require("../interpreter");
-const StructureComponent = require("../structure_component");
+const jqlite               = require("@jeefo/jqlite");
+const compile              = require("../compiler");
+const is_element           = require("../is_element");
+const Interpreter          = require("../interpreter");
+const ConditionalComponent = require("../components/conditional_component");
 
 const prop_component = Symbol("component");
 
-const definition  = {
-    binders      : [],
-    Controller   : class Controller {},
-    dependencies : [],
-};
+const compile_child = async (component, {element, $placeholder}) => {
+    const wrapper = await new ConditionalComponent(
+        "switch-wrapper", element, component
+    );
 
-const find_case = (cases, value) => {
-    return cases.find(node => {
-        if (node.interpreter) {
-            return node.interpreter.get_value() === value;
+    if (! wrapper.is_destroyed) {
+        await wrapper.initialize();
+        if (! wrapper.is_destroyed) {
+            $placeholder.after(wrapper.$element);
+            if (component.is_rendered) { wrapper.trigger_render(); }
         }
-        return node;
-    });
+    }
+
+    return wrapper;
 };
 
-const compile_component = async (node, component) => {
-    const child    = new StructureComponent(null, definition, component);
-    const elements = await compile([node.clone(true)], child, false);
-    child.$element = jqlite(elements[0]);
-    return child;
+const compile_self = async instance => {
+    await compile.from_elements([instance.element], instance);
 };
-
-const placeholder_node = new NodeElement(null, {
-    name       : "switch-placeholder",
-    class_list : [],
-    content    : null,
-    attrs      : new Attributes(),
-    events     : new Events(),
-});
 
 module.exports = {
     type     : "structure",
@@ -62,85 +50,68 @@ module.exports = {
 
     controller : class SwitchDirective {
         async on_init ($element, component) {
-            const { node, expression } = component;
+            const {element, expression} = component;
+            element.removeAttribute("switch");
 
-            const cases = [];
-            const placeholder_clone = placeholder_node.clone();
-            placeholder_clone.attrs.set("switch-id", component.id);
-            node.children = node.children.map(child => {
-                if (child.attrs.has("case")) {
-                    const expr = child.attrs.get("case");
-                    child.interpreter = new Interpreter(expr, component);
+            component.cases       = [];
+            component.interpreter = new Interpreter(expression, component);
 
-                    cases.push(child);
-                    return placeholder_clone;
-                } else if (child.attrs.has("default")) {
-                    cases.push(child);
-                    return placeholder_clone;
-                } else {
-                    return child;
+            let i = element.childNodes.length;
+            while (i--) {
+                const node = element.childNodes[i];
+                if (! is_element(node)) continue;
+
+                if (node.hasAttribute("case")) {
+                    const expr       = node.getAttribute("case");
+                    const comment    = `switch-case: ${expr}`;
+                    const comment_el = document.createComment(comment);
+                    component.cases.push({
+                        element      : node,
+                        interpreter  : new Interpreter(expr, component),
+                        $placeholder : jqlite(comment_el),
+                    });
+                    node.removeAttribute("case");
+                    element.replaceChild(comment_el, node);
+                } else if (node.hasAttribute("default")) {
+                    if (component.default_case) {
+                        throw new Error("Multiple default case found in switch.");
+                    }
+                    const comment = document.createComment("switch-default");
+                    component.default_case = {
+                        element      : node,
+                        $placeholder : jqlite(comment),
+                    };
+                    node.removeAttribute("default");
+                    element.replaceChild(comment, node);
                 }
-            });
-
-            component.cases        = cases;
-            component.interpreter  = new Interpreter(expression, component);
-            component.placeholders = [];
-
-            const elements = await compile([node], component);
-            $element.replace(elements[0]);
-            if (component.children[0].$element.DOM_element === elements[0]) {
-                component.$element = null;
             }
 
-            component.placeholders.forEach((p, i) => {
-                p.node = cases[i];
-            });
+            component.is_initialized = true;
+            await compile_self(component);
 
             this[prop_component] = component;
-
             await this.on_digest();
         }
 
         async on_digest () {
-            const component  = this[prop_component];
-            const value      = component.interpreter.get_value();
-            let matched_node = find_case(component.cases, value);
+            const component = this[prop_component];
+            const value     = component.interpreter.get_value();
 
-            // Cleaning old switch-case
-            if (component.matched_node) {
-                if (component.matched_node === matched_node) {
-                    matched_node = null;
-                } else {
-                    if (component.active_child) {
-                        component.active_child.destroy();
-                    }
-                    component.matched_node = component.active_child = null;
+            let matched_case = component.cases.find(node => {
+                return node.interpreter.get_value() === value;
+            }) || component.default_case;
+
+            if (component.matched_case !== matched_case) {
+                // Cleaning old switch-case
+                if (component.instance) {
+                    component.instance.destroy();
+                    component.instance = null;
                 }
-            }
 
-            if (matched_node) {
-                component.matched_node = matched_node;
-
-                const child = await compile_component(matched_node, component);
-                if (! child.is_destroyed) {
-                    const placeholder = component.placeholders.find(p => {
-                        return p.node === matched_node;
-                    });
-                    const child_index = component.children.findIndex(child => {
-                        return child === placeholder;
-                    });
-                    component.children.splice(child_index + 1, 0, child);
-                    placeholder.$element.after(child.$element);
-                    component.active_child = child;
-
-                    if (component.is_initialized) {
-                        await child.init();
-
-                        if (! child.is_destroyed && component.is_attached) {
-                            child.trigger_renderable();
-                        }
-                    }
-                }
+                component.matched_case = matched_case;
+                component.instance = await compile_child(
+                    component, matched_case
+                );
             }
         }
     }

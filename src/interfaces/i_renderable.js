@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
-* File Name   : base_component.js
-* Created at  : 2019-07-06
-* Updated at  : 2019-12-29
+* File Name   : i_renderable.js
+* Created at  : 2020-06-08
+* Updated at  : 2020-10-23
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -16,46 +16,33 @@
 // ignore:end
 
 const Observer       = require("@jeefo/observer");
-const Interface      = require("@jeefo/utils/class/interface");
-const Interpreter    = require("./interpreter");
-const ChangeDetector = require("./change_detector");
+const IComponent     = require("./i_component");
+const Interpreter    = require("../interpreter");
+const ChangeDetector = require("../change_detector");
 
-class IBaseComponent extends Interface {
-    constructor (name, definition) {
-        super(IBaseComponent);
+class IRenderable extends IComponent {
+    constructor (name, $element, {
+        binders      = [],
+        dependencies = [],
+        Controller, controller_name,
+    }) {
+        super(name, { Controller, controller_name }, IRenderable);
 
-        this.name           = name;
-        this.is_initialized = false;
-
-        if (definition.Controller) {
-            this.controller = new definition.Controller();
-        } else {
-            this.controller = null;
-        }
-
-        this.binders          = definition.binders;
+        this.binders          = binders;
+        this.$element         = $element;
         this.observer         = null;
-        this.dependencies     = definition.dependencies;
-        this.controller_name  = definition.controller_name;
+        this.dependencies     = dependencies;
         this.change_detectors = [];
     }
 
-    get_marker () {
-        return `jeefo-component-id="${this.id}"`;
-    }
-
-    init () {
-        throw new Error("Derived class must be implement `init()` method.");
-    }
-
-    set_dependencies (component) {
-        const { controller, dependencies } = this;
+    set_dependencies (bounded_component) {
+        const {controller, dependencies} = this;
 
         dependencies.forEach(d => {
             let dependency;
 
             LOOP:
-            for (let p = component.parent; p; p = p.parent) {
+            for (let p = bounded_component; p; p = p.parent) {
                 if (p.name === d.name) {
                     dependency = p;
                     break;
@@ -76,36 +63,38 @@ class IBaseComponent extends Interface {
         });
     }
 
-    bind (DOM_element, component) {
-        this.binders.forEach(({ property, operator, attribute_name }) => {
-            if (! DOM_element.hasAttribute(attribute_name)) { return; }
-            const script = DOM_element.getAttribute(attribute_name).trim();
-            DOM_element.removeAttribute(attribute_name);
+    bind (bounded_component) {
+        const element = this.$element.DOM_element;
 
-            if (! script) { return; }
+        this.binders.forEach(({ property, operator, attribute_name }) => {
+            if (! element.hasAttribute(attribute_name)) return;
+            const script = element.getAttribute(attribute_name).trim();
+            element.removeAttribute(attribute_name);
+
+            if (! script) return;
 
             let interpreter;
             switch (operator) {
                 // Once
                 case '!' : {
-                    const interpreter = new Interpreter(script, component);
+                    const interpreter = new Interpreter(script, bounded_component);
                     this.controller[property] = interpreter.get_value();
                     return;
                 }
                 // String interpreter
                 case '@' : {
                     const str_script = `\`${ script }\``;
-                    interpreter = new Interpreter(str_script, component);
+                    interpreter = new Interpreter(str_script, bounded_component);
                     break;
                 }
                 // 1 way bind
                 case '<' : {
-                    interpreter = new Interpreter(script, component);
+                    interpreter = new Interpreter(script, bounded_component);
                     break;
                 }
                 // 2 way bind
                 case '=' : {
-                    interpreter = new Interpreter(script, component, true);
+                    interpreter = new Interpreter(script, bounded_component, true);
                     break;
                 }
                 default:
@@ -125,9 +114,7 @@ class IBaseComponent extends Interface {
     }
 
     observe (property, notify_handler) {
-        if (! this.observer) {
-            this.observer = new Observer(this.controller);
-        }
+        if (! this.observer) this.observer = new Observer(this.controller);
         this.observer.on(property, notify_handler);
     }
 
@@ -135,10 +122,21 @@ class IBaseComponent extends Interface {
         this.change_detectors.forEach(change_detector => {
             change_detector.invoke();
         });
-        if (this.controller && this.controller.on_digest) {
-            await this.controller.on_digest();
+        const {controller} = this;
+        if (controller && typeof controller.on_digest === "function") {
+            await controller.on_digest();
+        }
+    }
+
+    async destroy () {
+        const {controller} = this;
+        if (controller) {
+            if (typeof controller.on_destroy === "function") {
+                await controller.on_destroy();
+            }
+            Observer.destroy(controller);
         }
     }
 }
 
-module.exports = IBaseComponent;
+module.exports = IRenderable;

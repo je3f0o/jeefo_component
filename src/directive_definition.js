@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : directive_definition.js
 * Created at  : 2017-08-07
-* Updated at  : 2019-12-29
+* Updated at  : 2020-10-23
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -18,7 +18,7 @@
 const for_each      = require("@jeefo/utils/object/for_each");
 const extend_member = require("@jeefo/utils/class/extend_member");
 const styles        = require("./styles");
-const IDefinition   = require("./i_definition");
+const IDefinition   = require("./interfaces/i_definition");
 
 const is_class = value => value.toString().startsWith("class");
 
@@ -37,8 +37,7 @@ class DirectiveDefinition extends IDefinition {
         if (priority) { this.priority = priority; }
         if (type) {
             if (type.toLowerCase() === "structure") {
-                this.is_structure     = true;
-                this.is_self_required = true;
+                this.is_structure = true;
             } else {
                 throw new SyntaxError("Invalid directive type");
             }

@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : if.js
 * Created at  : 2017-09-17
-* Updated at  : 2019-12-03
+* Updated at  : 2020-10-23
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -15,36 +15,24 @@
 
 // ignore:end
 
-const jqlite             = require("@jeefo/jqlite");
-const compile            = require("../compiler");
-const Interpreter        = require("../interpreter");
-const StructureComponent = require("../structure_component");
+const jqlite               = require("@jeefo/jqlite");
+const Interpreter          = require("../interpreter");
+const ConditionalComponent = require("../components/conditional_component");
 
 const prop_comment   = Symbol("$comment");
 const prop_component = Symbol("interpreter");
 
-const definition  = {
-    binders      : [],
-    Controller   : class Controller {},
-    dependencies : [],
-};
-
 const compile_component = async (component, $comment) => {
-    const child = new StructureComponent(null, definition, component);
-    component.children.push(child);
+    const wrapper = await new ConditionalComponent(
+        "if--rendered", component.element, component
+    );
 
-    const elements = await compile([component.node.clone(true)], child, false);
-    child.$element = jqlite(elements[0]);
+    if (! wrapper.is_destroyed) {
+        await wrapper.initialize();
 
-    if (! child.is_destroyed) {
-        $comment.after(child.$element);
-
-        if (component.is_initialized) {
-            await child.init();
-
-            if (! child.is_destroyed && component.is_attached) {
-                child.trigger_renderable();
-            }
+        if (! wrapper.is_destroyed) {
+            $comment.after(wrapper.$element);
+            if (component.is_rendered) wrapper.trigger_render();
         }
     }
 };
@@ -60,6 +48,7 @@ module.exports = {
             const comment = document.createComment(` If: ${ expression } `);
 
             component.interpreter = new Interpreter(expression, component);
+            component.element.removeAttribute("if");
 
             this[prop_comment]   = jqlite(comment);
             this[prop_component] = component;

@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : interpreter.js
 * Created at  : 2019-06-30
-* Updated at  : 2020-03-08
+* Updated at  : 2020-10-23
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -19,28 +19,36 @@ const parser = require("./input/parser");
 
 const no_operation = () => {};
 
-function find_controller (property, controllers, input_component) {
-    const build_script = ({ id, controller }) => {
-        const ctrl_name = `ctrl_${ id }`;
-        controllers[ctrl_name] = controller;
-        return `$ctrls.${ ctrl_name }.${ property }`;
-    };
+const is_event_binder = ({event_binder}, prop) => {
+    return event_binder && event_binder.hasOwnProperty(prop);
+};
 
-    const is_matched = ({ controller, controller_name }) => {
-        return (
-            property === controller_name ||
-            (controller && property in controller)
-        );
+function find_controller (property, controllers, input_component) {
+    if (is_event_binder(input_component, property)) {
+        controllers.event_binder = input_component.event_binder;
+        return `$ctrls.event_binder.${property}`;
+    }
+
+    const build_script = ({ id, controller, controller_name }) => {
+        if (controller_name) {
+            if (controller_name === property) {
+                controllers[controller_name] = controller;
+                return `$ctrls.${controller_name}`;
+            }
+        } else if (controller && property in controller) {
+            const ctrl_name = `ctrl_${ id }`;
+            controllers[ctrl_name] = controller;
+            return `$ctrls.${ctrl_name}.${property}`;
+        }
     };
 
     const _find_controller = component => {
-        if (is_matched(component)) {
-            return build_script(component);
-        }
+        const script = build_script(component);
+        if (script) { return script; }
 
-        const directive = component.directives.find(is_matched);
-        if (directive) {
-            return build_script(directive);
+        for (const directive of component.directives) {
+            const script = build_script(directive);
+            if (script) { return script; }
         }
     };
 
@@ -54,10 +62,8 @@ function find_controller (property, controllers, input_component) {
 
     // global
     if (window[property]) {
-        return build_script({
-            id         : "global",
-            controller : window
-        });
+        controllers.__global = window;
+        return `$ctrls.__global.${property}`;
     }
 }
 
@@ -71,19 +77,18 @@ function compile (node, controllers, component) {
 			return node.value;
 		case "Literal" :
 		case "Property name" :
-		case "New expression" :
-		case "Call expression" :
-		case "Member expression" :
-		case "Primary expression" :
 		case "Assignment expression" :
-		case "Left hand side expression" :
             return compile(node.expression, controllers, component);
+		case "New expression" :
+            console.log("Hello ???");
+            console.log(node);
+            debugger;
+            break;
 		case "String literal" :
-            const { quote } = node;
-			return `${ quote }${ node.value }${ quote }`;
+			return `${node.quote}${node.value}${node.quote}`;
 		case "Identifier reference" :
             const script = find_controller(
-                node.value, controllers, component
+                node.identifier.identifier_name.value, controllers, component
             );
             if (! script) {
                 throw new ReferenceError(
@@ -104,89 +109,98 @@ function compile (node, controllers, component) {
 		case "Property assignment" :
             const prop  = compile(node.property_name, controllers, component);
             const value = compile(node.expression, controllers, component);
-            return `${ prop } : ${ value }`;
+            return `${prop} : ${value}`;
+		case "Positive plus operator"  :
+		case "Negation minus operator" :
+            const { operator: {value: op}, expression } = node;
+            return `${op}${compile(expression, controllers, component)}`;
 		case "Logical not operator" :
-            return `! ${ compile(node.expression, controllers, component) }`;
-		case "Logical or operator" :
-		case "Logical and operator" :
-            const left  = compile(node.left, controllers, component);
-            const right = compile(node.right, controllers, component);
-            return `${ left } ${ node.operator.value } ${ right }`;
-		case "Conditional operator" :
-            const falsy = compile(
-                node.falsy_expression, controllers, component
-            );
-            const truthy = compile(
-                node.truthy_expression, controllers, component
-            );
-            const condition = compile(node.condition, controllers, component);
-            return `${ condition } ? ${ truthy } : ${ falsy }`;
+            return `! ${compile(node.expression, controllers, component)}`;
+
 		case "Member operator" : {
             const object = compile(node.object, controllers, component);
-			return `${ object }.${ node.property.value }`;
+			return `${object}.${node.property.value}`;
         }
 		case "Computed member expression" : {
-            debugger
-            const object = compile(
-                node.object, controllers, component, is_member);
-            const expression = compile(
-                node.expression, controllers, component);
-            return `${ object }[${ expression }]`;
+            const object = compile(node.object, controllers, component);
+            const expr   = compile(node.member, controllers, component);
+            return `${object}[${expr}]`;
         }
-		case "Equality operator" :
-		case "Arithmetic operator" :
-		case "Assignment operator" :
-		case "Comparision operator" : {
+
+        // Conditional expression
+		case "Conditional operator" :
+            let {
+                condition,
+                falsy_expression  : falsy,
+                truthy_expression : truthy,
+            } = node;
+            falsy     = compile(falsy, controllers, component);
+            truthy    = compile(truthy, controllers, component);
+            condition = compile(condition, controllers, component);
+            return `${condition} ? ${truthy} : ${falsy}`;
+
+        // Binary operators
+        case "Assignment operator" :
+        case "Logical or operator" :
+        case "Logical and operator" :
+        case "Bitwise or operator" :
+        case "Bitwise xor operator" :
+        case "Bitwise and operator" :
+        case "Equality operator" :
+        case "Relational operator" :
+        case "Bitwise shift operator" :
+        case "Additive operator" :
+        case "Multiplicative operator" :
+        case "Exponentiation operator" :
+        case "Relational in operator" :
+        case "Relational instanceof operator" : {
             const left  = compile(node.left , controllers, component);
             const right = compile(node.right, controllers, component);
-            return `${ left } ${ node.operator.value } ${ right }`;
+            return `${left} ${node.operator.value} ${right}`;
         }
+
 		case "Function call expression" :
-            const callee = compile(
-                node.callee, controllers, component);
-            const args = node.arguments.list.map(arg => {
-                return compile(arg, controllers, component);
-            });
-            return `${ callee }(${ args.join(", ") })`;
+            const callee = compile(node.callee, controllers, component);
+            const args = node.arguments.list.map(arg => compile(
+                arg, controllers, component
+            ));
+            return `${callee}(${args.join(", ")})`;
+
 		case "Expression statement" :
             return compile(node.expression, controllers, component);
 		case "Template literal" :
-            return node.body.map(element => {
-                if (element.id === "Template literal string") {
-                    return `"${ element.value }"`;
-                }
-                const expr = compile(
-                    element.expression, controllers, component
-                );
-                return `(${ expr })`;
+            return node.body.map(({id, expression, value}) => {
+                if (id === "Template literal string") return `"${value}"`;
+                const expr = compile(expression, controllers, component);
+                return `(${expr})`;
             }).join(" + ");
+
+        // DEBUG_START
+		case "Debugger statement" :
+            return node.keyword.value;
+        // DEBUG_END
+
 		default:
 			throw new Error(`Invalid AST_Node: '${ node.id }'`);
 	}
 }
 
 const build_setter = (stmt, controllers, component) => {
-    const has_error_occurred = (
-        stmt.length !== 1 ||
-        stmt[0].id !== "Expression statement" ||
-        stmt[0].expression.id !== "Primary expression"
-    );
-    if (has_error_occurred) {
+    if (stmt.length !== 1 || stmt[0].id !== "Expression statement") {
         throw new Error("Invalid expression in two way bindings");
     }
     let lvalue;
-    const expression = stmt[0].expression.expression;
+    const expr = stmt[0].expression;
 
-    switch (expression.id) {
+    switch (expr.id) {
 		case "Null literal"    :
 		case "String literal"  :
 		case "Boolean literal" :
 		case "Numeric literal" :
 			return no_operation;
         case "Identifier reference" : {
-            const property = expression.value;
             lvalue = find_controller(
-                property, controllers, component
+                expr.identifier.identifier_name.value, controllers, component
             );
             break;
         }
@@ -198,11 +212,11 @@ const build_setter = (stmt, controllers, component) => {
             */
         default:
 			throw new Error(
-                `Invalid AST_Node in two way bindings: '${ expression.id }'`
+                `Invalid AST_Node in two way bindings: '${expr.id}'`
             );
     }
 
-    const fn_body = `${ lvalue } = value;`;
+    const fn_body = `${lvalue} = value;`;
     return new Function("$ctrls", "value", fn_body); // jshint ignore:line
 };
 
@@ -232,7 +246,9 @@ class Interpreter {
         });
         const last_index = compiled_stmts.length - 1;
         const last_stmt  = compiled_stmts[last_index];
-        compiled_stmts[last_index] = `result = ${ last_stmt }`;
+        if (statements[statements.length - 1].id !== "Debugger statement") {
+            compiled_stmts[last_index] = `result = ${ last_stmt }`;
+        }
 
         const code = build_fn_body(compiled_stmts);
         /*

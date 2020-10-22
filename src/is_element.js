@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
-* File Name   : invisible_component.js
-* Created at  : 2019-07-09
-* Updated at  : 2019-07-09
+* File Name   : is_element.js
+* Created at  : 2020-06-06
+* Updated at  : 2020-06-06
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -15,10 +15,4 @@
 
 // ignore:end
 
-class InvisibleComponent {
-    constructor () {
-
-    }
-}
-
-module.exports = InvisibleComponent;
+module.exports = v => v instanceof Node && v.nodeType === Node.ELEMENT_NODE;

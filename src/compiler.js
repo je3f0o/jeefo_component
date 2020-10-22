@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : compiler.js
 * Created at  : 2019-06-23
-* Updated at  : 2019-12-07
+* Updated at  : 2020-10-23
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -15,208 +15,166 @@
 
 // ignore:end
 
-const jqlite             = require("@jeefo/jqlite");
-const definitions_table  = require("./definitions_table");
-const StructureComponent = require("./structure_component");
-const DirectiveComponent = require("./directive_component");
+const JeefoDOMParser      = require("@jeefo/jqlite/dom_parser");
+const definitions_table   = require("./definitions_table");
+const Directive           = require("./components/directive");
+const StructureComponent  = require("./components/structure_component");
+const RenderableComponent = require("./components/renderable_component");
 
-const { MARKER } = StructureComponent;
+const BINDER = /{{\s*\S+.*}}/m;
 
-const single_tag_elements = ["img"];
+const new_binding_component = (element, parent) => {
+    return new RenderableComponent("binding--component", element, {}, parent);
+};
+
+const is_element = n => n instanceof Element;
 
 // Higher order structure diretive like: forEach="item in items"
-async function find_structure_directive (node, parent) {
+async function find_structure (element, parent) {
     let name, definition;
 
-    for (const [attr_name] of node.attrs) {
-        const _definition = await definitions_table.get_directive(attr_name);
-        if (_definition && _definition.is_structure) {
-            if (definition) {
-                if (_definition.priority > definition.priority) {
-                    name       = attr_name;
-                    definition = _definition;
-                }
-            } else {
-                name       = attr_name;
-                definition = _definition;
+    if (element.hasAttributes()) {
+        for (const attr of element.attributes) {
+            const def = await definitions_table.get_directive(attr.name);
+            if (def && def.is_structure) {
+                if (definition && def.priority < definition.priority) continue;
+                name       = attr.name;
+                definition = def;
             }
         }
     }
 
-    if (! definition) { return; }
+    if (definition) {
+        const component = new StructureComponent(
+            name, element, definition, parent
+        );
+        component.expression = element.getAttribute(name);
+        element.removeAttribute(name);
 
-    const component      = new StructureComponent(null, definition, parent);
-    component.node       = node;
-    component.expression = node.attrs.get(name);
-    node.attrs.remove(name);
+        return component;
+    }
 
-    return component;
+    name       = element.tagName.toLowerCase();
+    definition = await definitions_table.get_component(name);
+    if (definition && definition.is_structure) {
+        return new StructureComponent(name, element, definition, parent);
+    }
 }
 
-const fake_definition = {
-    binders          : [],
-    dependencies     : [],
-    Controller       : class Controller {},
-    controller_name  : null,
-    is_self_required : false,
-};
-async function find_component (node, parent) {
+async function find_component (element, parent) {
+    const name    = element.tagName.toLowerCase();
     let component = null;
-    let definition = await definitions_table.get_component(node.name);
+
+    let definition = await definitions_table.get_component(name);
     if (definition) {
-        component = new StructureComponent(node.name, definition, parent);
-        if (definition.is_structure) {
-            component.node = node;
-            return component;
-        }
         // TODO: think about better way, maybe return jeefo template or
         // something...
         if (definition.template_handler) {
-            definition.template_handler(node);
+            const new_element = definition.template_handler(element);
+            if (is_element(new_element)) {
+                if (element.parentNode) {
+                    element.parentNode.replaceChild(new_element, element);
+                }
+                element = new_element;
+            }
         } else {
-            node.children = definition.transclude(node.children);
+            definition.transclude(element);
         }
+
+        component = new RenderableComponent(name, element, definition, parent);
     }
 
-    // Content binding
-    if (node.children.length === 0 &&
-        node.content && node.content.includes("${")) {
-        if (! node.attrs.has("jf-bind")) {
-            node.attrs.set("jf-bind", node.content);
-        }
-        node.content = null;
-    }
+    // Attribute binding or has directive
+    if (! component && element.hasAttributes()) {
+        for (const {name, value} of element.attributes) {
+            const def = await definitions_table.get_directive(name);
 
-    if (! component) {
-        // Attribute binding or has directive
-        for (const [attr_name, value] of node.attrs) {
-            const def = await definitions_table.get_directive(attr_name);
-            if (def || (value && value.includes("${"))) {
-                component =  new StructureComponent(
-                    null, fake_definition, parent
-                );
+            if (def || BINDER.test(value) || name.startsWith("on--")) {
+                component = new_binding_component(element, parent);
                 break;
             }
         }
     }
 
-    if (node.events.length) {
-        if (! component) {
-            component = new StructureComponent(null, fake_definition, parent);
+    // Content binding
+    if (element.children.length === 0 && BINDER.test(element.textContent)) {
+        if (element.hasAttribute("js-bind")) {
+            throw new Error("Ambiguous binding");
         }
-        component.binding_events = node.events;
+        element.setAttribute("jf-bind", element.textContent);
+        if (! component) component = new_binding_component(element, parent);
     }
+
     return component;
 }
 
-async function resolve_template (nodes, parent_component) {
-    const results = [];
+async function resolve_components (elements, parent) {
+    const components = [];
 
-    for (const node of nodes) {
+    for (let elem of elements) {
         // Structure directive is higher order
-        let component = await find_structure_directive(node, parent_component);
+        let component = await find_structure(elem, parent);
         if (component) {
-            parent_component.children.push(component);
-            results.push(
-                `<${node.name} ${ component.get_marker() }></${node.name}>`
-            );
+            components.push(component);
             continue;
         }
 
-        let attrs = '';
-        let content = '';
-
-        component = await find_component(node, parent_component);
+        component = await find_component(elem, parent);
         if (component) {
-            attrs += ` ${ component.get_marker() }`;
-            parent_component.children.push(component);
+            components.push(component);
+            const {$element} = component;
+            elem = $element.DOM_element;
 
-            if (component.is_self_required) {
-                results.push(
-                    `<${node.name}${attrs}></${node.name}>`
-                );
-                continue;
+            // Find directives
+            if (elem.hasAttributes()) {
+                let i = elem.attributes.length;
+                while (i--) {
+                    const {name, value} = elem.attributes[i];
+                    const def = await definitions_table.get_directive(name);
+                    if (def) {
+                        const directive = new Directive(name, $element, def);
+                        component.directives.push(directive);
+                    } else if (name.startsWith("on--")) {
+                        component.binding_events.push({
+                            event_name : name.substring(4),
+                            expression : value,
+                        });
+                        elem.removeAttribute(name);
+                    }
+                }
             }
         }
 
-        if (node.children.length) {
-            const parent = component || parent_component;
-            content = await resolve_template(node.children, parent);
-        } else if (node.content) {
-            content = node.content;
-        }
-
-        // Find directives
-        if (node.id) {
-            attrs += ` id="${ node.id }"`;
-        }
-        if (node.class_list.length) {
-            attrs += ` class="${ node.class_list.join(' ') }"`;
-        }
-        for (const [name, value] of node.attrs) {
-            attrs += ` ${ name }`;
-            if (value) {
-                attrs += `="${ value }"`;
-            }
-
-            const definition = await definitions_table.get_directive(name);
-            if (definition) {
-                const directive = new DirectiveComponent(name, definition);
-                component.directives.push(directive);
-            }
-        }
-
-        if (single_tag_elements.includes(node.name)) {
-            results.push(`<${node.name}${attrs}>`);
-        } else {
-            results.push(`<${node.name}${attrs}>${content}</${node.name}>`);
-        }
+        await resolve_components(elem.children, component || parent);
     }
 
-    return results.join('');
+    return components;
 }
 
-function set_elements (components, $wrapper) {
-    components.forEach(component => {
-        if (! component.is_initialized) {
-            component.$element = $wrapper.first(component.selector);
-            component.$element.DOM_element.removeAttribute(MARKER);
-        }
-        set_elements(component.children, $wrapper);
-    });
-}
+async function compile_from_elements (elements, parent, to_initialize = true) {
+    const components = await resolve_components(elements, parent);
 
-async function compile (nodes, parent_component, to_initialize = true) {
-    const template  = await resolve_template(nodes, parent_component);
-    const $wrapper  = jqlite("<div></div>");
-    const $elements = jqlite(template);
-
-    if ($elements.DOM_element) {
-        $wrapper.append($elements);
-    } else {
-        for (let i = 0; i < $elements.length; i+= 1) {
-            $wrapper.append($elements[i]);
-        }
-    }
-
-    set_elements(parent_component.children, $wrapper);
     if (to_initialize) {
-        for (const component of parent_component.children) {
-            if (! component.is_initialized) {
-                await component.init();
+        for (const component of components) {
+            if (! component.is_initialized && ! component.is_destroyed) {
+                await component.initialize();
             }
         }
     }
 
-    // Much faster way remove all child nodes
-    // ref: https://stackoverflow.com/questions/3955229/remove-all-child-elements-of-a-dom-node-in-javascript?answertab=votes#tab-top
-    const wrapper  = $wrapper.DOM_element;
-    const elements = [];
-    while (wrapper.firstChild) {
-        elements.push(wrapper.firstChild);
-        wrapper.removeChild(wrapper.firstChild);
-    }
     return elements;
 }
+
+async function compile (template, parent_component, to_initialize = true) {
+    const dom_parser = new JeefoDOMParser(template);
+
+    await compile_from_elements(
+        dom_parser.elements, parent_component, to_initialize
+    );
+
+    return dom_parser.detach();
+}
+
+compile.from_elements = compile_from_elements;
 
 module.exports = compile;

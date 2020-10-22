@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
-* File Name   : jf_bind_directive.js
+* File Name   : jf_bind.js
 * Created at  : 2017-07-26
-* Updated at  : 2019-07-21
+* Updated at  : 2020-10-23
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -35,8 +35,8 @@ module.exports = {
 	bindings : {
 		"(bind)" : "@jfBind",
 	},
-	controller : {
-		on_init : function ($element) {
+	controller : class Binder {
+		on_init ($element) {
             bind($element, this["(bind)"]);
             const observer = new Observer(this);
             observer.on("(bind)", value => bind($element, value));
