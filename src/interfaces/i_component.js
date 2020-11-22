@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : i_component.js
 * Created at  : 2019-07-06
-* Updated at  : 2020-06-12
+* Updated at  : 2020-11-23
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -19,9 +19,7 @@ const Readonly       = require("@jeefo/utils/object/readonly");
 const Interface      = require("@jeefo/utils/class/interface");
 const virtual_method = require("@jeefo/utils/class/virtual_method");
 
-// DEBUG_START
 let static_id = 1;
-// DEBUG_END
 
 class IComponent extends Interface {
     constructor (name, {
@@ -44,10 +42,8 @@ class IComponent extends Interface {
             this.directives = [];
         }
 
-        // DEBUG_START
         const id = static_id++;
         readonly.getter("id", () => id);
-        // DEBUG_END
     }
 
     digest         () { virtual_method(); }
