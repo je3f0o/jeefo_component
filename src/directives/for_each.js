@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : for_each.js
 * Created at  : 2017-07-25
-* Updated at  : 2020-10-23
+* Updated at  : 2020-11-15
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -205,8 +205,10 @@ module.exports = {
             try {
                 await sync_children(this);
 
+                /*
                 const move = (index, child) => {
                     const {index: old_index} = child;
+                    if (! children[old_index]) return;
 
                     const a = children[index].$element.DOM_element;
                     const b = children[old_index].$element.DOM_element;
@@ -220,6 +222,7 @@ module.exports = {
                     child.index               = index;
                     children[old_index].index = old_index;
                 };
+                */
 
                 const insert = (index, child) => {
                     if (index === 0) {
@@ -234,6 +237,14 @@ module.exports = {
                         insert(index, child);
                         child.is_attached = true;
                     } else if (child.index !== index) {
+                        if (index > 0) {
+                            children[index - 1].$element.after(child.$element);
+                        } else {
+                            $placeholder.after(child.$element);
+                        }
+                        child.index = index;
+                        /*
+                        debugger
                         const data = {
                             old_index : child.index,
                             old_value : child.value,
@@ -244,6 +255,7 @@ module.exports = {
                         if (child.is_rendered) {
                             child.$element.trigger("foreach:move", {data});
                         }
+                        */
                     }
                 }
 

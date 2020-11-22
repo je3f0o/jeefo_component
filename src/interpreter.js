@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : interpreter.js
 * Created at  : 2019-06-30
-* Updated at  : 2020-10-23
+* Updated at  : 2020-10-31
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -123,7 +123,7 @@ function compile (node, controllers, component) {
         }
 		case "Computed member expression" : {
             const object = compile(node.object, controllers, component);
-            const expr   = compile(node.member, controllers, component);
+            const expr   = compile(node.member.expression, controllers, component);
             return `${object}[${expr}]`;
         }
 

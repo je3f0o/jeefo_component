@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : ast_node_table.js
 * Created at  : 2017-09-18
-* Updated at  : 2020-10-23
+* Updated at  : 2020-10-31
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -76,6 +76,7 @@ const nodes = [
     "es6/expressions/initializer",
     "es6/expressions/cover_initialized_name",
     "es5/expressions/computed_member_expression",
+    "es6/expressions/computed_member_access",
     "es6/expressions/property_definition",
 
     // 12.2.9 - Template literal

@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : jf_bind_html.js
 * Created at  : 2020-08-09
-* Updated at  : 2020-08-09
+* Updated at  : 2020-11-18
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -19,16 +19,31 @@
 const JeefoDOMParser = require("@jeefo/jqlite/dom_parser");
 
 const white_list_elements = [
-    "DIV",
+    "A",
+    "B",
+    "U",
+    "I",
     "OL",
     "UL",
     "LI",
+    "BR",
+    "DIV",
+    "PRE",
+    "TD",
+    "TH",
+    "TR",
+    "THEAD",
+    "TBODY",
+    "TABLE",
     "SPAN",
+    "BLOCKQUOTE",
 ];
 
 const white_list_attributes = [
     "class",
     "style",
+    "href",
+    "target",
 ];
 
 const sanitize = (document, elements) => {

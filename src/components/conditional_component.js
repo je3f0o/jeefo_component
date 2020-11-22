@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : conditional_component.js
 * Created at  : 2020-06-09
-* Updated at  : 2020-10-23
+* Updated at  : 2020-10-31
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -35,9 +35,7 @@ class ConditionalComponent extends IComponent {
             await compile.from_elements([clone], this, false);
             this.$element = jqlite(wrapper.removeChild(wrapper.firstChild));
 
-            if (parent) {
-                parent.children.push(this);
-            }
+            if (parent) parent.children.push(this);
             resolve(this);
         });
     }
