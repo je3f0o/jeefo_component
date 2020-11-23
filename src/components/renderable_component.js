@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : renderable_component.js
 * Created at  : 2019-06-26
-* Updated at  : 2020-10-23
+* Updated at  : 2020-11-23
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -144,21 +144,17 @@ class RenderableComponent extends IRenderable {
             console.log("Component destroy called more than once.");
         }
         // DEBUG_END
-        const { $element, parent, children } = this;
+        const {$element, parent, children} = this;
 
         array_remove(parent.children, this);
         this.is_destroyed = true;
 
-        for (const directive of this.directives) {
-            await directive.destroy();
-        }
+        for (const directive of this.directives) directive.destroy();
         await super.destroy();
         $element.remove();
 
         let i = children.length;
-        while (i--) {
-            children[i].destroy();
-        }
+        while (i--) children[i].destroy();
     }
 
     async digest () {

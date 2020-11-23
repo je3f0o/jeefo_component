@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : structure_component.js
 * Created at  : 2019-06-26
-* Updated at  : 2020-10-23
+* Updated at  : 2020-11-23
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -16,6 +16,7 @@
 // ignore:end
 
 const jqlite       = require("@jeefo/jqlite");
+const Observer     = require("@jeefo/observer");
 const IComponent   = require("../interfaces/i_component");
 const array_remove = require("@jeefo/utils/array/remove");
 
@@ -36,7 +37,7 @@ class StructureComponent extends IComponent {
     async initialize () {
         // DEBUG_START
         if (this.is_initialized) {
-            console.log("IStructure initialize called more than once");
+            console.log("StructureComponent initialize called more than once");
         }
         // DEBUG_END
         this.controller = new this.Controller();
@@ -47,12 +48,21 @@ class StructureComponent extends IComponent {
     async destroy () {
         // DEBUG_START
         if (this.is_destroyed) {
-            console.log("IStructure destroy called more than once.");
+            console.log("StructureComponent destroy called more than once.");
         }
         // DEBUG_END
-        for (const child of this.children) await child.destroy();
-        array_remove(this.parent.children, this);
+        const {controller, parent, children} = this;
+        array_remove(parent.children, this);
         this.is_destroyed = true;
+
+        for (const directive of this.directives) directive.destroy();
+        if (typeof controller.on_destroy === "function") {
+            await controller.on_destroy();
+        }
+        Observer.destroy(controller);
+
+        let i = children.length;
+        while (i--) children[i].destroy();
     }
 
     async digest () {
