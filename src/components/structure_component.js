@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : structure_component.js
 * Created at  : 2019-06-26
-* Updated at  : 2020-11-23
+* Updated at  : 2020-11-24
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -56,10 +56,12 @@ class StructureComponent extends IComponent {
         this.is_destroyed = true;
 
         for (const directive of this.directives) directive.destroy();
-        if (typeof controller.on_destroy === "function") {
-            await controller.on_destroy();
+        if (controller) {
+            if (typeof controller.on_destroy === "function") {
+                await controller.on_destroy();
+            }
+            Observer.destroy(controller);
         }
-        Observer.destroy(controller);
 
         let i = children.length;
         while (i--) children[i].destroy();
