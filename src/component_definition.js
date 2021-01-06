@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : component_definition.js
 * Created at  : 2019-06-24
-* Updated at  : 2020-10-23
+* Updated at  : 2021-01-07
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -21,7 +21,7 @@ const styles               = require("./styles");
 const IDefinition          = require("./interfaces/i_definition");
 const TranscludeController = require("./transclude_controller");
 
-const is_class = value => value.toString().startsWith("class");
+const is_class = v => v.__jeefo_class__ || v.toString().startsWith("class");
 
 const pendings = Object.create(null);
 
