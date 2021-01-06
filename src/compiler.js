@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : compiler.js
 * Created at  : 2019-06-23
-* Updated at  : 2020-10-23
+* Updated at  : 2020-12-29
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -145,7 +145,9 @@ async function resolve_components (elements, parent) {
             }
         }
 
-        await resolve_components(elem.children, component || parent);
+        const {children} = elem;
+        const results = await resolve_components(children, component || parent);
+        components.push(...results);
     }
 
     return components;

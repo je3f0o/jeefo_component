@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : directive_definition.js
 * Created at  : 2017-08-07
-* Updated at  : 2020-10-23
+* Updated at  : 2021-01-06
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -20,7 +20,10 @@ const extend_member = require("@jeefo/utils/class/extend_member");
 const styles        = require("./styles");
 const IDefinition   = require("./interfaces/i_definition");
 
-const is_class = value => value.toString().startsWith("class");
+const is_class = value => (
+    value.toString().startsWith("class") ||
+    value.__jeefo_class__
+);
 
 class DirectiveDefinition extends IDefinition {
     constructor (selectors, path) {
