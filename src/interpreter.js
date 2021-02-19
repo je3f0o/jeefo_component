@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : interpreter.js
 * Created at  : 2019-06-30
-* Updated at  : 2020-10-31
+* Updated at  : 2021-01-26
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -204,12 +204,10 @@ const build_setter = (stmt, controllers, component) => {
             );
             break;
         }
-        /*
-        case "Member expression"          :
+        case "Member operator"          :
         case "Computed member expression" :
-            lvalue = compile(expression, controllers, component);
+            lvalue = compile(expr, controllers, component);
             break;
-            */
         default:
 			throw new Error(
                 `Invalid AST_Node in two way bindings: '${expr.id}'`

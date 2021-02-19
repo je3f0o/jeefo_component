@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : compiler.js
 * Created at  : 2019-06-23
-* Updated at  : 2020-12-29
+* Updated at  : 2021-02-20
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -17,11 +17,13 @@
 
 const JeefoDOMParser      = require("@jeefo/jqlite/dom_parser");
 const definitions_table   = require("./definitions_table");
+const TextBinder          = require("./text_binder");
 const Directive           = require("./components/directive");
 const StructureComponent  = require("./components/structure_component");
 const RenderableComponent = require("./components/renderable_component");
 
-const BINDER = /{{\s*\S+.*}}/m;
+const BINDER    = /{{\s*\S+.*}}/m;
+const TEXT_NODE = Node.TEXT_NODE || 3;
 
 const new_binding_component = (element, parent) => {
     return new RenderableComponent("binding--component", element, {}, parent);
@@ -96,13 +98,20 @@ async function find_component (element, parent) {
         }
     }
 
-    // Content binding
-    if (element.children.length === 0 && BINDER.test(element.textContent)) {
+    // Text content binding
+    let i = element.childNodes.length;
+    while (i--) {
+        const node = element.childNodes[i];
+        if (node.nodeType !== TEXT_NODE || ! BINDER.test(node.textContent)) {
+            continue;
+        }
         if (element.hasAttribute("js-bind")) {
             throw new Error("Ambiguous binding");
         }
-        element.setAttribute("jf-bind", element.textContent);
         if (! component) component = new_binding_component(element, parent);
+
+        const binder = new TextBinder(node, component);
+        component.text_binders.unshift(binder);
     }
 
     return component;

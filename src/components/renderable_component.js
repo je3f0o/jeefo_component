@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : renderable_component.js
 * Created at  : 2019-06-26
-* Updated at  : 2020-11-23
+* Updated at  : 2021-02-18
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -52,6 +52,7 @@ class RenderableComponent extends IRenderable {
         super(name, jqlite(element), definition);
 
         this.parent         = parent;
+        this.text_binders   = [];
         this.event_binder   = null;
         this.binding_events = [];
 
@@ -122,13 +123,18 @@ class RenderableComponent extends IRenderable {
             }
         }
 
-        // Step 4: initialize directives
+        // Step 4: initialize text binders
+        for (const binder of this.text_binders) {
+            binder.initialize(this);
+        }
+
+        // Step 5: initialize directives
         for (const directive of this.directives) {
             await directive.initialize(this);
             if (this.is_destroyed) return;
         }
 
-        // Step 5: initialize child components
+        // Step 6: initialize child components
         for (const child of this.children) {
             if (! child.is_destroyed) await child.initialize();
             if (this.is_destroyed) return;
@@ -160,6 +166,9 @@ class RenderableComponent extends IRenderable {
     async digest () {
         if (this.is_initialized) {
             await super.digest();
+            for (const binder of this.text_binders) {
+                binder.digest();
+            }
             for (const directive of this.directives) {
                 await directive.digest();
             }
